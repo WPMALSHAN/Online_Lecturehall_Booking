@@ -28,14 +28,6 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-
-                        // Admin only
-                        .requestMatchers("/api/users/**").hasRole("ADMIN")
-
-                        // Admin + Technician
-                        .requestMatchers("/api/incidents/**")
-                        .hasAnyRole("ADMIN", "TECHNICIAN")
-
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
