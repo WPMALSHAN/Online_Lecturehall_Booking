@@ -25,18 +25,19 @@ public class AuthService {
             throw new RuntimeException("Email already registered");
         }
 
-        // Build user and save
+        // Build user with DEFAULT role
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(User.Role.valueOf(request.getRole().toUpperCase()))
+                .role(User.Role.STUDENT) // 🔥 FIXED
                 .build();
 
         userRepository.save(user);
 
-        // Generate token and return
+        // Generate token
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
+
         return new AuthResponse(token, user.getRole().name(), user.getName());
     }
 

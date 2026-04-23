@@ -27,13 +27,15 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints - no token needed
                         .requestMatchers("/api/auth/**").permitAll()
+
                         // Admin only
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
-                        // Technician endpoints
-                        .requestMatchers("/api/incidents/*/assign").hasRole("ADMIN")
-                        // Everything else needs login
+
+                        // Admin + Technician
+                        .requestMatchers("/api/incidents/**")
+                        .hasAnyRole("ADMIN", "TECHNICIAN")
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
