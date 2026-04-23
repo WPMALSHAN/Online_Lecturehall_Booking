@@ -13,8 +13,12 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
@@ -48,7 +52,7 @@ public class IncidentController {
     @GetMapping
     public ResponseEntity<List<IncidentResponse>> getIncidents(
             Authentication auth,
-            @RequestParam(required = false) Incident.Status status) {
+            @RequestParam(name = "status", required = false) Incident.Status status) {
 
         return ResponseEntity.ok(incidentService.getIncidents(auth.getName(), status));
     }
@@ -93,5 +97,29 @@ public class IncidentController {
 
         incidentService.deleteAttachment(incidentId, attachmentId, auth.getName());
         return ResponseEntity.ok(Map.of("message", "Attachment deleted successfully"));
+    }
+
+    @GetMapping("/{incidentId}/attachments/{attachmentId}")
+    public ResponseEntity<Resource> getAttachment(
+            @PathVariable Long incidentId,
+            @PathVariable Long attachmentId,
+            Authentication auth) {
+
+        var attachment = incidentService.getAttachment(incidentId, attachmentId, auth.getName());
+        Path path = Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+
+        try {
+            Resource resource = new UrlResource(path.toUri());
+            if (!resource.exists() || !resource.isReadable()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(attachment.getContentType()))
+                    .header("Content-Disposition", "inline; filename=\"" + attachment.getOriginalFileName() + "\"")
+                    .body(resource);
+        } catch (Exception ex) {
+            throw new RuntimeException("Failed to load attachment", ex);
+        }
     }
 }

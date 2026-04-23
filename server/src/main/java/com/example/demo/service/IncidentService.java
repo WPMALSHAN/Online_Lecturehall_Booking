@@ -18,10 +18,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Base64;
 
 @Service
 @RequiredArgsConstructor
@@ -59,7 +62,7 @@ public class IncidentService {
         List<IncidentAttachment> savedAttachments = attachmentStorageService.saveAttachments(savedIncident, attachments);
 
         if (!savedAttachments.isEmpty()) {
-            savedIncident.setAttachments(new ArrayList<>(savedAttachments));
+            savedIncident.getAttachments().addAll(savedAttachments);
         }
 
         return toResponse(savedIncident);
@@ -188,6 +191,22 @@ public class IncidentService {
         attachmentStorageService.deleteAttachment(attachment);
     }
 
+    @Transactional(readOnly = true)
+    public IncidentAttachment getAttachment(Long incidentId, Long attachmentId, String actorEmail) {
+        User actor = getUserByEmail(actorEmail);
+        Incident incident = findIncidentById(incidentId);
+        assertCanAccessIncident(actor, incident);
+
+        IncidentAttachment attachment = incidentAttachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attachment not found with id: " + attachmentId));
+
+        if (!attachment.getIncident().getId().equals(incident.getId())) {
+            throw new RuntimeException("Attachment does not belong to this incident");
+        }
+
+        return attachment;
+    }
+
     public Incident findIncidentById(Long incidentId) {
         return incidentRepository.findById(incidentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Incident not found with id: " + incidentId));
@@ -246,6 +265,7 @@ public class IncidentService {
                         .originalFileName(attachment.getOriginalFileName())
                         .contentType(attachment.getContentType())
                         .fileSize(attachment.getFileSize())
+                .previewDataUrl(buildPreviewDataUrl(attachment))
                         .build())
                 .toList();
 
@@ -269,6 +289,16 @@ public class IncidentService {
                 .closedAt(incident.getClosedAt())
                 .attachments(attachmentInfos)
                 .build();
+    }
+
+    private String buildPreviewDataUrl(IncidentAttachment attachment) {
+        try {
+            byte[] bytes = Files.readAllBytes(Path.of(attachment.getFilePath()));
+            String contentType = attachment.getContentType() == null ? "application/octet-stream" : attachment.getContentType();
+            return "data:" + contentType + ";base64," + Base64.getEncoder().encodeToString(bytes);
+        } catch (Exception ex) {
+            return null;
+        }
     }
 }
 

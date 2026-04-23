@@ -427,13 +427,27 @@ export default function IncidentPage() {
 
               <div className="attachments-block">
                 <h3>Attachments</h3>
-                <ul>
+                <ul className="attachment-grid">
                   {selectedIncident.attachments?.map((file) => (
-                    <li key={file.id}>
-                      <span>{file.originalFileName}</span>
-                      <button type="button" onClick={() => onDeleteAttachment(file.id)}>
-                        Delete
-                      </button>
+                    <li key={file.id} className="attachment-card">
+                      {file.previewDataUrl ? (
+                        <img
+                          src={file.previewDataUrl}
+                          alt={file.originalFileName}
+                          className="attachment-preview"
+                        />
+                      ) : (
+                        <div className="attachment-preview attachment-preview-fallback">
+                          <span>{file.originalFileName}</span>
+                        </div>
+                      )}
+
+                      <div className="attachment-card-footer">
+                        <span>{file.originalFileName}</span>
+                        <button type="button" onClick={() => onDeleteAttachment(file.id)}>
+                          Delete
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>

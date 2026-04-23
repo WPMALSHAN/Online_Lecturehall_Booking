@@ -36,6 +36,7 @@ public class IncidentResponse {
         private String originalFileName;
         private String contentType;
         private long fileSize;
+        private String previewDataUrl;
     }
 }
 
