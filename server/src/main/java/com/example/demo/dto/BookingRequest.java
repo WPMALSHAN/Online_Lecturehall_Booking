@@ -1,6 +1,6 @@
 package com.example.demo.dto;
 
-import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,7 +16,7 @@ public class BookingRequest {
     private Long facilityId;
 
     @NotNull(message = "Date is required")
-    @FutureOrPresent(message = "Booking date must be today or in the future")
+    @Future(message = "Booking date must be in the future")
     private LocalDate date;
 
     @NotNull(message = "Start time is required")
