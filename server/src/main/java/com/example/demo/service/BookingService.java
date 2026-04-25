@@ -1,7 +1,6 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.BookingRequest;
-import com.example.demo.dto.BookingResponse;
 import com.example.demo.entity.Booking;
 import com.example.demo.entity.Facility;
 import com.example.demo.entity.User;
@@ -13,50 +12,52 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class BookingService {
 
     private final BookingRepository bookingRepository;
     private final FacilityRepository facilityRepository;
     private final UserRepository userRepository;
-    private final NotificationService notificationService;
 
-    public BookingService(BookingRepository bookingRepository,
-            FacilityRepository facilityRepository,
-            UserRepository userRepository,
-            NotificationService notificationService) {
-        this.bookingRepository = bookingRepository;
-        this.facilityRepository = facilityRepository;
-        this.userRepository = userRepository;
-        this.notificationService = notificationService;
-    }
+    // Create booking with conflict check
+    public Booking createBooking(BookingRequest request, String email) {
 
-    public BookingResponse createBooking(String email, BookingRequest request) {
+        // Get user
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+        // Get facility
         Facility facility = facilityRepository.findById(request.getFacilityId())
-                .orElseThrow(
-                        () -> new ResourceNotFoundException("Facility not found with id: " + request.getFacilityId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Facility not found"));
 
+        // Check facility is active
         if (facility.getStatus() == Facility.Status.OUT_OF_SERVICE) {
-            throw new IllegalArgumentException("Facility is currently out of service.");
+            throw new RuntimeException("Facility is out of service");
         }
 
-        if (request.getStartTime().isAfter(request.getEndTime())
-                || request.getStartTime().equals(request.getEndTime())) {
-            throw new IllegalArgumentException("Start time must be before end time.");
+        // Validate time - end must be after start
+        if (!request.getEndTime().isAfter(request.getStartTime())) {
+            throw new RuntimeException("End time must be after start time");
         }
 
-        List<Booking> overlappingBookings = bookingRepository.findOverlappingBookings(
-                facility.getId(), request.getDate(), request.getStartTime(), request.getEndTime());
+        // ✅ Conflict check - same facility same date overlapping time
+        List<Booking> conflicts = bookingRepository.findConflictingBookings(
+                facility,
+                request.getDate(),
+                request.getStartTime(),
+                request.getEndTime()
+        );
 
-        if (!overlappingBookings.isEmpty()) {
-            throw new IllegalArgumentException("The facility is already booked during the requested time.");
+        if (!conflicts.isEmpty()) {
+            throw new RuntimeException(
+                    "Facility already booked for this time slot. " +
+                            "Please choose a different time."
+            );
         }
 
+        // Build and save booking
         Booking booking = Booking.builder()
                 .user(user)
                 .facility(facility)
@@ -68,89 +69,74 @@ public class BookingService {
                 .status(Booking.Status.PENDING)
                 .build();
 
-        Booking savedBooking = bookingRepository.save(booking);
-        return mapToResponse(savedBooking);
+        return bookingRepository.save(booking);
     }
 
-    public List<BookingResponse> getAllBookings() {
-        return bookingRepository.findAll().stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
-    }
-
-    public List<BookingResponse> getUserBookings(String email) {
+    // Get my bookings
+    public List<Booking> getMyBookings(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
-        return bookingRepository.findByUserId(user.getId()).stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return bookingRepository.findByUser(user);
     }
 
-    public BookingResponse approveBooking(Long bookingId) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id: " + bookingId));
+    // Get all bookings (Admin)
+    public List<Booking> getAllBookings() {
+        return bookingRepository.findAll();
+    }
+
+    // Get pending bookings (Admin)
+    public List<Booking> getPendingBookings() {
+        return bookingRepository.findByStatus(Booking.Status.PENDING);
+    }
+
+    // Approve booking (Admin)
+    public Booking approveBooking(Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+
+        if (booking.getStatus() != Booking.Status.PENDING) {
+            throw new RuntimeException("Only pending bookings can be approved");
+        }
 
         booking.setStatus(Booking.Status.APPROVED);
-        Booking savedBooking = bookingRepository.save(booking);
-
-        notificationService.createNotification(
-                booking.getUser(),
-                "Your booking for " + booking.getFacility().getName() + " has been approved.");
-
-        return mapToResponse(savedBooking);
+        return bookingRepository.save(booking);
     }
 
-    public BookingResponse rejectBooking(Long bookingId, String reason) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id: " + bookingId));
+    // Reject booking (Admin)
+    public Booking rejectBooking(Long id, String reason) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+
+        if (booking.getStatus() != Booking.Status.PENDING) {
+            throw new RuntimeException("Only pending bookings can be rejected");
+        }
 
         booking.setStatus(Booking.Status.REJECTED);
         booking.setRejectionReason(reason);
-        Booking savedBooking = bookingRepository.save(booking);
-
-        notificationService.createNotification(
-                booking.getUser(),
-                "Your booking for " + booking.getFacility().getName() + " has been rejected. Reason: " + reason);
-
-        return mapToResponse(savedBooking);
+        return bookingRepository.save(booking);
     }
 
-    public BookingResponse cancelBooking(Long bookingId, String email) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id: " + bookingId));
+    // Cancel booking (User cancels own booking)
+    public Booking cancelBooking(Long id, String email) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
-
-        if (!booking.getUser().getId().equals(user.getId())) {
-            throw new IllegalArgumentException("You can only cancel your own bookings.");
+        // Check this booking belongs to this user
+        if (!booking.getUser().getEmail().equals(email)) {
+            throw new RuntimeException("You can only cancel your own bookings");
         }
 
-        if (booking.getStatus() == Booking.Status.REJECTED || booking.getStatus() == Booking.Status.CANCELLED) {
-            throw new IllegalArgumentException("Booking is already cancelled or rejected.");
+        if (booking.getStatus() == Booking.Status.CANCELLED) {
+            throw new RuntimeException("Booking is already cancelled");
         }
 
         booking.setStatus(Booking.Status.CANCELLED);
-        Booking savedBooking = bookingRepository.save(booking);
-        return mapToResponse(savedBooking);
+        return bookingRepository.save(booking);
     }
 
-    private BookingResponse mapToResponse(Booking booking) {
-        return BookingResponse.builder()
-                .id(booking.getId())
-                .userId(booking.getUser().getId())
-                .userName(booking.getUser().getName())
-                .userEmail(booking.getUser().getEmail())
-                .facilityId(booking.getFacility().getId())
-                .facilityName(booking.getFacility().getName())
-                .facilityLocation(booking.getFacility().getLocation())
-                .date(booking.getDate())
-                .startTime(booking.getStartTime())
-                .endTime(booking.getEndTime())
-                .purpose(booking.getPurpose())
-                .expectedAttendees(booking.getExpectedAttendees())
-                .status(booking.getStatus())
-                .rejectionReason(booking.getRejectionReason())
-                .build();
+    // Get booking by ID
+    public Booking getBookingById(Long id) {
+        return bookingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
     }
 }
