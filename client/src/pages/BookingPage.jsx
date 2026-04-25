@@ -29,8 +29,17 @@ export default function BookingPage() {
     purpose: '',
     expectedAttendees: 1,
   });
+  const [createFormErrors, setCreateFormErrors] = useState({
+    facilityId: '',
+    date: '',
+    startTime: '',
+    endTime: '',
+    expectedAttendees: '',
+    purpose: '',
+  });
 
   const [rejectReason, setRejectReason] = useState('');
+  const [rejectReasonError, setRejectReasonError] = useState('');
 
   const isAdmin = role === 'ADMIN';
 
@@ -85,12 +94,76 @@ export default function BookingPage() {
   const onCreateFormChange = (e) => {
     const { name, value } = e.target;
     setCreateForm((prev) => ({ ...prev, [name]: value }));
+    setCreateFormErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const validateCreateBookingForm = () => {
+    const errors = {
+      facilityId: '',
+      date: '',
+      startTime: '',
+      endTime: '',
+      expectedAttendees: '',
+      purpose: '',
+    };
+
+    let isValid = true;
+    const today = new Date().toISOString().split('T')[0];
+    const attendees = Number(createForm.expectedAttendees);
+
+    if (!createForm.facilityId) {
+      errors.facilityId = 'Please select a facility.';
+      isValid = false;
+    }
+
+    if (!createForm.date) {
+      errors.date = 'Please select a date.';
+      isValid = false;
+    } else if (createForm.date < today) {
+      errors.date = 'Booking date cannot be in the past.';
+      isValid = false;
+    }
+
+    if (!createForm.startTime) {
+      errors.startTime = 'Please select a start time.';
+      isValid = false;
+    }
+
+    if (!createForm.endTime) {
+      errors.endTime = 'Please select an end time.';
+      isValid = false;
+    }
+
+    if (createForm.startTime && createForm.endTime && createForm.endTime <= createForm.startTime) {
+      errors.endTime = 'End time must be after start time.';
+      isValid = false;
+    }
+
+    if (!Number.isInteger(attendees) || attendees < 1) {
+      errors.expectedAttendees = 'Expected attendees must be at least 1.';
+      isValid = false;
+    }
+
+    if (!createForm.purpose.trim()) {
+      errors.purpose = 'Please enter the booking purpose.';
+      isValid = false;
+    } else if (createForm.purpose.trim().length < 10) {
+      errors.purpose = 'Purpose must be at least 10 characters.';
+      isValid = false;
+    }
+
+    setCreateFormErrors(errors);
+    return isValid;
   };
 
   const onCreateBooking = async (e) => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
+
+    if (!validateCreateBookingForm()) {
+      return;
+    }
 
     try {
       await bookingApi.createBooking(token, createForm);
@@ -137,11 +210,23 @@ export default function BookingPage() {
 
   const onRejectBooking = async (e) => {
     e.preventDefault();
-    if (!selectedBookingId || !rejectReason) return;
+    if (!selectedBookingId) return;
+
+    if (!rejectReason.trim()) {
+      setRejectReasonError('Rejection reason is required.');
+      return;
+    }
+
+    if (rejectReason.trim().length < 5) {
+      setRejectReasonError('Rejection reason must be at least 5 characters.');
+      return;
+    }
+
+    setRejectReasonError('');
     setErrorMessage('');
     setSuccessMessage('');
     try {
-      await bookingApi.rejectBooking(token, selectedBookingId, rejectReason);
+      await bookingApi.rejectBooking(token, selectedBookingId, rejectReason.trim());
       setSuccessMessage('Booking rejected.');
       setRejectReason('');
       await loadData();
@@ -169,7 +254,7 @@ export default function BookingPage() {
       {!isAdmin && (
         <section className="panel create-panel">
           <h2>Request New Booking</h2>
-          <form className="incident-form" onSubmit={onCreateBooking}>
+          <form className="incident-form" onSubmit={onCreateBooking} noValidate>
             <select
               name="facilityId"
               value={createForm.facilityId}
@@ -183,6 +268,7 @@ export default function BookingPage() {
                 </option>
               ))}
             </select>
+            {createFormErrors.facilityId ? <p className="form-error">{createFormErrors.facilityId}</p> : null}
             <input
               type="date"
               name="date"
@@ -190,6 +276,7 @@ export default function BookingPage() {
               onChange={onCreateFormChange}
               required
             />
+            {createFormErrors.date ? <p className="form-error">{createFormErrors.date}</p> : null}
             <input
               type="time"
               name="startTime"
@@ -197,6 +284,7 @@ export default function BookingPage() {
               onChange={onCreateFormChange}
               required
             />
+            {createFormErrors.startTime ? <p className="form-error">{createFormErrors.startTime}</p> : null}
             <input
               type="time"
               name="endTime"
@@ -204,6 +292,7 @@ export default function BookingPage() {
               onChange={onCreateFormChange}
               required
             />
+            {createFormErrors.endTime ? <p className="form-error">{createFormErrors.endTime}</p> : null}
             <input
               type="number"
               name="expectedAttendees"
@@ -213,6 +302,7 @@ export default function BookingPage() {
               placeholder="Expected Attendees"
               required
             />
+            {createFormErrors.expectedAttendees ? <p className="form-error">{createFormErrors.expectedAttendees}</p> : null}
             <textarea
               name="purpose"
               value={createForm.purpose}
@@ -220,6 +310,7 @@ export default function BookingPage() {
               placeholder="Purpose of booking"
               required
             />
+            {createFormErrors.purpose ? <p className="form-error">{createFormErrors.purpose}</p> : null}
             <button type="submit">Submit Request</button>
           </form>
         </section>
@@ -286,10 +377,14 @@ export default function BookingPage() {
                     <form className="inline-form" onSubmit={onRejectBooking} style={{ marginTop: '10px' }}>
                       <input
                         value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)}
+                        onChange={(e) => {
+                          setRejectReason(e.target.value);
+                          setRejectReasonError('');
+                        }}
                         placeholder="Reason for rejection"
                         required
                       />
+                      {rejectReasonError ? <p className="form-error">{rejectReasonError}</p> : null}
                       <button type="submit" style={{ backgroundColor: '#e74c3c' }}>Reject</button>
                     </form>
                   </div>

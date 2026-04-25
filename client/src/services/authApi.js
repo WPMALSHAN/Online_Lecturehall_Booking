@@ -1,19 +1,11 @@
-import { requestJson } from './apiClient';
+import httpClient from './httpClient';
 
-function sendAuthRequest(path, body) {
-  return requestJson(path, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+export async function loginUser(credentials) {
+  const response = await httpClient.post('/auth/login', credentials);
+  return response.data;
 }
 
-export function loginUser(credentials) {
-  return sendAuthRequest('/api/auth/login', credentials);
-}
-
-export function registerUser(userData) {
-  return sendAuthRequest('/api/auth/register', userData);
+export async function registerUser(userData) {
+  const response = await httpClient.post('/auth/register', userData);
+  return response.data;
 }
