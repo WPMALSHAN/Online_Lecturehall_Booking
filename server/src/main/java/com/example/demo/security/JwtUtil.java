@@ -1,6 +1,8 @@
 package com.example.demo.security;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -21,7 +23,6 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    // Generate token using email + role
     public String generateToken(String email, String role) {
         return Jwts.builder()
                 .setSubject(email)
@@ -32,24 +33,25 @@ public class JwtUtil {
                 .compact();
     }
 
-    // Get email from token
     public String extractEmail(String token) {
         return getClaims(token).getSubject();
     }
 
-    // Get role from token
     public String extractRole(String token) {
         return getClaims(token).get("role", String.class);
     }
 
-    // Check token is valid
-    public boolean validateToken(String token) {
+    public boolean validateToken(String token, String email) {
         try {
-            getClaims(token);
-            return true;
-        } catch (JwtException | IllegalArgumentException e) {
+            String extractedEmail = extractEmail(token);
+            return extractedEmail.equals(email) && !isTokenExpired(token);
+        } catch (Exception e) {
             return false;
         }
+    }
+
+    private boolean isTokenExpired(String token) {
+        return getClaims(token).getExpiration().before(new Date());
     }
 
     private Claims getClaims(String token) {

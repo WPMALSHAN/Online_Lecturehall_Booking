@@ -1,4 +1,4 @@
-import { requestJson } from './apiClient';
+import { requestBlob, requestJson } from './apiClient';
 
 function authHeaders(token, hasJsonBody = true) {
   const headers = {
@@ -101,6 +101,12 @@ export function deleteIncidentComment(token, commentId) {
 export function deleteIncidentAttachment(token, incidentId, attachmentId) {
   return requestJson(`/api/incidents/${incidentId}/attachments/${attachmentId}`, {
     method: 'DELETE',
+    headers: authHeaders(token, false),
+  });
+}
+
+export function getIncidentAttachmentBlob(token, incidentId, attachmentId) {
+  return requestBlob(`/api/incidents/${incidentId}/attachments/${attachmentId}`, {
     headers: authHeaders(token, false),
   });
 }

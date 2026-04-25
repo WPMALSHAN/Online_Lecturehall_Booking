@@ -1,19 +1,17 @@
+
+
 package com.example.demo.controller;
 
-import com.example.demo.dto.AssignTechnicianRequest;
-import com.example.demo.dto.CreateIncidentRequest;
-import com.example.demo.dto.IncidentResponse;
-import com.example.demo.dto.UpdateIncidentStatusRequest;
+import com.example.demo.dto.IncidentRequest;
 import com.example.demo.entity.Incident;
+import com.example.demo.entity.TechnicianUpdate;
 import com.example.demo.service.IncidentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -26,72 +24,94 @@ public class IncidentController {
 
     private final IncidentService incidentService;
 
-    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<IncidentResponse> createIncidentJson(
-            Authentication auth,
-            @Valid @RequestBody CreateIncidentRequest request) {
-
-        IncidentResponse response = incidentService.createIncident(auth.getName(), request, null);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    // POST /api/incidents - any logged in user can report
+    @PostMapping
+    public ResponseEntity<Incident> create(
+            @Valid @RequestBody IncidentRequest request,
+            Authentication auth) {
+        return ResponseEntity.ok(incidentService.createIncident(request, auth.getName()));
     }
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<IncidentResponse> createIncident(
-            Authentication auth,
-            @Valid @RequestPart("data") CreateIncidentRequest request,
-            @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments) {
-
-        IncidentResponse response = incidentService.createIncident(auth.getName(), request, attachments);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    // GET /api/incidents/my - get my incidents
+    @GetMapping("/my")
+    public ResponseEntity<List<Incident>> getMyIncidents(Authentication auth) {
+        return ResponseEntity.ok(incidentService.getMyIncidents(auth.getName()));
     }
 
+    // GET /api/incidents - get all incidents (Admin only)
     @GetMapping
-    public ResponseEntity<List<IncidentResponse>> getIncidents(
-            Authentication auth,
-            @RequestParam(required = false) Incident.Status status) {
-
-        return ResponseEntity.ok(incidentService.getIncidents(auth.getName(), status));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<Incident>> getAll() {
+        return ResponseEntity.ok(incidentService.getAllIncidents());
     }
 
+    // GET /api/incidents/{id}
     @GetMapping("/{id}")
-    public ResponseEntity<IncidentResponse> getIncidentById(@PathVariable Long id, Authentication auth) {
-        return ResponseEntity.ok(incidentService.getIncidentById(id, auth.getName()));
+    public ResponseEntity<Incident> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(incidentService.getIncidentById(id));
     }
 
+    // GET /api/incidents/status/{status} - filter by status (Admin)
+    @GetMapping("/status/{status}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<Incident>> getByStatus(@PathVariable String status) {
+        return ResponseEntity.ok(incidentService.getByStatus(status));
+    }
+
+    // GET /api/incidents/assigned - technician sees own assigned incidents
+    @GetMapping("/assigned")
+    @PreAuthorize("hasRole('TECHNICIAN')")
+    public ResponseEntity<List<Incident>> getAssigned(Authentication auth) {
+        return ResponseEntity.ok(incidentService.getMyAssignedIncidents(auth.getName()));
+    }
+
+    // PUT /api/incidents/{id}/assign - Admin assigns technician
     @PutMapping("/{id}/assign")
-    public ResponseEntity<IncidentResponse> assignTechnician(
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Incident> assign(
             @PathVariable Long id,
-            @Valid @RequestBody AssignTechnicianRequest request,
-            Authentication auth) {
-
-        return ResponseEntity.ok(incidentService.assignTechnician(id, request, auth.getName()));
+            @RequestBody Map<String, Long> body) {
+        Long technicianId = body.get("technicianId");
+        return ResponseEntity.ok(incidentService.assignTechnician(id, technicianId));
     }
 
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<IncidentResponse> updateStatus(
+    // POST /api/incidents/{id}/updates - technician adds update
+    @PostMapping("/{id}/updates")
+    @PreAuthorize("hasRole('TECHNICIAN')")
+    public ResponseEntity<TechnicianUpdate> addUpdate(
             @PathVariable Long id,
-            @Valid @RequestBody UpdateIncidentStatusRequest request,
+            @RequestBody Map<String, String> body,
             Authentication auth) {
-
-        return ResponseEntity.ok(incidentService.updateStatus(id, request, auth.getName()));
+        String updateText = body.get("updateText");
+        return ResponseEntity.ok(incidentService.addUpdate(id, updateText, auth.getName()));
     }
 
-    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<IncidentResponse> addAttachments(
-            @PathVariable Long id,
-            @RequestPart("attachments") List<MultipartFile> attachments,
-            Authentication auth) {
-
-        return ResponseEntity.ok(incidentService.addAttachments(id, attachments, auth.getName()));
+    // GET /api/incidents/{id}/updates - get all updates for incident
+    @GetMapping("/{id}/updates")
+    public ResponseEntity<List<TechnicianUpdate>> getUpdates(@PathVariable Long id) {
+        return ResponseEntity.ok(incidentService.getUpdates(id));
     }
 
-    @DeleteMapping("/{incidentId}/attachments/{attachmentId}")
-    public ResponseEntity<Map<String, String>> deleteAttachment(
-            @PathVariable Long incidentId,
-            @PathVariable Long attachmentId,
+    // PUT /api/incidents/{id}/resolve - technician marks resolved
+    @PutMapping("/{id}/resolve")
+    @PreAuthorize("hasRole('TECHNICIAN')")
+    public ResponseEntity<Incident> resolve(
+            @PathVariable Long id,
             Authentication auth) {
+        return ResponseEntity.ok(incidentService.markResolved(id, auth.getName()));
+    }
 
-        incidentService.deleteAttachment(incidentId, attachmentId, auth.getName());
-        return ResponseEntity.ok(Map.of("message", "Attachment deleted successfully"));
+    // PUT /api/incidents/{id}/close - Admin closes incident
+    @PutMapping("/{id}/close")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Incident> close(@PathVariable Long id) {
+        return ResponseEntity.ok(incidentService.closeIncident(id));
+    }
+
+    // PUT /api/incidents/{id}/reject - Admin rejects incident
+    @PutMapping("/{id}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Incident> reject(@PathVariable Long id) {
+        return ResponseEntity.ok(incidentService.rejectIncident(id));
     }
 }

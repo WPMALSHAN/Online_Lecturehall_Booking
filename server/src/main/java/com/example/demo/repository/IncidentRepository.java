@@ -9,8 +9,16 @@ import java.util.List;
 
 @Repository
 public interface IncidentRepository extends JpaRepository<Incident, Long> {
-    List<Incident> findByReportedByOrderByCreatedAtDesc(User reportedBy);
-    List<Incident> findByAssignedTechnicianOrderByCreatedAtDesc(User assignedTechnician);
-    List<Incident> findByStatusOrderByCreatedAtDesc(Incident.Status status);
-}
 
+    // Get all incidents reported by a user
+    List<Incident> findByReportedBy(User user);
+
+    // Get all incidents by status
+    List<Incident> findByStatus(Incident.Status status);
+
+    // Get all incidents assigned to a technician
+    List<Incident> findByAssignedTechnician(User technician);
+
+    // Get all incidents by priority
+    List<Incident> findByPriority(String priority);
+}

@@ -31,3 +31,14 @@ export async function requestJson(path, options = {}) {
 
   return payload;
 }
+
+export async function requestBlob(path, options = {}) {
+  const response = await fetch(`${API_BASE_URL}${path}`, options);
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(buildErrorMessage(payload));
+  }
+
+  return response.blob();
+}

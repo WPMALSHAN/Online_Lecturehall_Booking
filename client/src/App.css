@@ -363,6 +363,10 @@ button:disabled {
   gap: 0.55rem;
 }
 
+.attachment-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
 .attachments-block li,
 .comment-list li {
   border: 1px solid #d4e0e7;
@@ -376,6 +380,46 @@ button:disabled {
   justify-content: space-between;
   gap: 0.7rem;
   align-items: center;
+}
+
+.attachment-card {
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+  padding: 0.55rem;
+  background: #f8fcfd;
+}
+
+.attachment-preview {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 0.55rem;
+  background: #e7f0f4;
+  border: 1px solid #c8dbe3;
+}
+
+.attachment-preview-fallback {
+  display: grid;
+  place-items: center;
+  padding: 0.75rem;
+  color: #3b5d6d;
+  text-align: center;
+}
+
+.attachment-card-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.65rem;
+}
+
+.attachment-card-footer span {
+  font-size: 0.88rem;
+  color: #22465a;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .inline-form {
