@@ -8,6 +8,7 @@ import ModulePlaceholderPage from './pages/ModulePlaceholderPage'
 import RegisterPage from './pages/RegisterPage'
 import StudentDashboardPage from './pages/StudentDashboardPage'
 import StudentLayoutPage from './pages/StudentLayoutPage'
+import BookingPage from './pages/BookingPage'
 import './App.css'
 
 function App() {
@@ -29,7 +30,7 @@ function App() {
         <Route index element={<Navigate to="/dashboard/student" replace />} />
         <Route path="student" element={<StudentDashboardPage />} />
         <Route path="facilities" element={<ModulePlaceholderPage title="Facilities" />} />
-        <Route path="bookings" element={<ModulePlaceholderPage title="Bookings" />} />
+        <Route path="bookings" element={<BookingPage />} />
         <Route path="incidents" element={<IncidentPage />} />
         <Route
           path="notifications"
