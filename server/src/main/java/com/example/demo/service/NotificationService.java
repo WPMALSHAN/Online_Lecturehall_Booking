@@ -14,15 +14,24 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationService {
 
-    private final NotificationRepository NotificationRepository;
+    private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+
+    // Create notification for cross-module events
+    public Notification createNotification(User user, String message) {
+        Notification notification = Notification.builder()
+                .user(user)
+                .message(message)
+                .build();
+        return notificationRepository.save(notification);
+    }
 
     // Get all notifications for logged-in user
     public List<Notification> getMyNotifications(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        return NotificationRepository.findByUserOrderByCreatedAtDesc(user);
+        return notificationRepository.findByUserOrderByCreatedAtDesc(user);
     }
 
     // Get only unread notifications
@@ -30,7 +39,7 @@ public class NotificationService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        return NotificationRepository.findByUserAndIsReadFalse(user);
+        return notificationRepository.findByUserAndIsReadFalse(user);
     }
 
     // Count unread notifications
@@ -38,16 +47,16 @@ public class NotificationService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        return NotificationRepository.countByUserAndIsReadFalse(user);
+        return notificationRepository.countByUserAndIsReadFalse(user);
     }
 
     // Mark one notification as read
     public Notification markAsRead(Long notificationId) {
-        Notification notification = NotificationRepository.findById(notificationId)
+        Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
 
         notification.setRead(true);
-        return NotificationRepository.save(notification);
+        return notificationRepository.save(notification);
     }
 
     // Mark all notifications as read for a user
@@ -55,16 +64,16 @@ public class NotificationService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        List<Notification> unread = NotificationRepository.findByUserAndIsReadFalse(user);
+        List<Notification> unread = notificationRepository.findByUserAndIsReadFalse(user);
         unread.forEach(n -> n.setRead(true));
-        NotificationRepository.saveAll(unread);
+        notificationRepository.saveAll(unread);
     }
 
     // Delete a notification
     public void deleteNotification(Long notificationId) {
-        Notification notification = NotificationRepository.findById(notificationId)
+        Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
 
-        NotificationRepository.delete(notification);
+        notificationRepository.delete(notification);
     }
 }

@@ -8,9 +8,31 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1a4556f8-59a1-400b-96ea-2b70fb3eb941" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/com/example/demo/entity/Asset.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/com/example/demo/entity/Technicianupdate.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/src/main/java/com/example/demo/security/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/com/example/demo/security/SecurityConfig.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/controller/IncidentCommentController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/controller/IncidentController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/dto/AssignTechnicianRequest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/dto/CreateIncidentRequest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/dto/IncidentCommentRequest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/dto/IncidentCommentResponse.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/dto/IncidentResponse.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/dto/UpdateIncidentStatusRequest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/entity/IncidentAttachment.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/entity/IncidentComment.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/repository/IncidentAttachmentRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/repository/IncidentCommentRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/repository/IncidentRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/service/IncidentAttachmentStorageService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/service/IncidentCommentService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/service/IncidentService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/server/src/test/java/com/example/demo/service/IncidentServiceTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/server/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/server/server/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/server/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/server/server/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/entity/Asset.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/entity/Asset.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/entity/Incident.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/entity/Incident.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/entity/Technicianupdate.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/entity/Technicianupdate.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/exception/GlobalExceptionHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/exception/GlobalExceptionHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/security/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/security/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/service/NotificationService.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/server/src/main/java/com/example/demo/service/NotificationService.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -105,7 +127,7 @@
       <workItem from="1775634732082" duration="11374000" />
       <workItem from="1775662135494" duration="12392000" />
       <workItem from="1776829011480" duration="10698000" />
-      <workItem from="1776913557095" duration="30166000" />
+      <workItem from="1776913557095" duration="30785000" />
     </task>
     <servers />
   </component>
