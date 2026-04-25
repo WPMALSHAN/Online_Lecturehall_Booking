@@ -1,11 +1,10 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.BookingRequest;
-import com.example.demo.dto.BookingResponse;
+import com.example.demo.entity.Booking;
 import com.example.demo.service.BookingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -16,56 +15,68 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/bookings")
+@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class BookingController {
 
     private final BookingService bookingService;
 
-    public BookingController(BookingService bookingService) {
-        this.bookingService = bookingService;
-    }
-
+    // POST /api/bookings - create booking (any logged in user)
     @PostMapping
-    public ResponseEntity<BookingResponse> createBooking(
-            Authentication auth,
-            @Valid @RequestBody BookingRequest request) {
-        
-        BookingResponse response = bookingService.createBooking(auth.getName(), request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    public ResponseEntity<Booking> createBooking(
+            @Valid @RequestBody BookingRequest request,
+            Authentication auth) {
+        return ResponseEntity.ok(bookingService.createBooking(request, auth.getName()));
     }
 
+    // GET /api/bookings/my - get my bookings
+    @GetMapping("/my")
+    public ResponseEntity<List<Booking>> getMyBookings(Authentication auth) {
+        return ResponseEntity.ok(bookingService.getMyBookings(auth.getName()));
+    }
+
+    // GET /api/bookings - get all bookings (Admin only)
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<BookingResponse>> getAllBookings() {
+    public ResponseEntity<List<Booking>> getAllBookings() {
         return ResponseEntity.ok(bookingService.getAllBookings());
     }
 
-    @GetMapping("/my-bookings")
-    public ResponseEntity<List<BookingResponse>> getUserBookings(Authentication auth) {
-        return ResponseEntity.ok(bookingService.getUserBookings(auth.getName()));
+    // GET /api/bookings/pending - get pending bookings (Admin only)
+    @GetMapping("/pending")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<Booking>> getPendingBookings() {
+        return ResponseEntity.ok(bookingService.getPendingBookings());
     }
 
+    // GET /api/bookings/{id} - get one booking
+    @GetMapping("/{id}")
+    public ResponseEntity<Booking> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(bookingService.getBookingById(id));
+    }
+
+    // PUT /api/bookings/{id}/approve - Admin approves
     @PutMapping("/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<BookingResponse> approveBooking(@PathVariable Long id) {
+    public ResponseEntity<Booking> approve(@PathVariable Long id) {
         return ResponseEntity.ok(bookingService.approveBooking(id));
     }
 
+    // PUT /api/bookings/{id}/reject - Admin rejects
     @PutMapping("/{id}/reject")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<BookingResponse> rejectBooking(
+    public ResponseEntity<Booking> reject(
             @PathVariable Long id,
-            @RequestBody Map<String, String> payload) {
-        
-        String reason = payload.getOrDefault("reason", "No reason provided");
+            @RequestBody Map<String, String> body) {
+        String reason = body.getOrDefault("reason", "No reason provided");
         return ResponseEntity.ok(bookingService.rejectBooking(id, reason));
     }
 
+    // PUT /api/bookings/{id}/cancel - User cancels own booking
     @PutMapping("/{id}/cancel")
-    public ResponseEntity<BookingResponse> cancelBooking(
+    public ResponseEntity<Booking> cancel(
             @PathVariable Long id,
             Authentication auth) {
-        
         return ResponseEntity.ok(bookingService.cancelBooking(id, auth.getName()));
     }
 }
