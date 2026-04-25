@@ -24,7 +24,8 @@ public class User {
     private String password;
 
     @Enumerated(EnumType.STRING)
-    private Role role;
+    @Column(nullable = false)
+    private Role role = Role.STUDENT;
 
     public enum Role {
         STUDENT, LECTURER, TECHNICIAN, ADMIN
