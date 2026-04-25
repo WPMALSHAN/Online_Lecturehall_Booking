@@ -32,29 +32,15 @@ A university platform for managing **Facility/Asset Booking** and **Maintenance/
 ## 📁 Project Structure
 
 ```
-it3030-paf-2026-smart-campus-groupXX/
-├── smart-campus-backend/        # Spring Boot Backend
+Online_Lecturehall_Booking/
+├── server/                      # Spring Boot Backend (Maven)
 │   ├── src/
-│   │   └── main/
-│   │       ├── java/com/smartcampus/
-│   │       │   ├── controller/
-│   │       │   ├── service/
-│   │       │   ├── repository/
-│   │       │   ├── entity/
-│   │       │   ├── dto/
-│   │       │   ├── exception/
-│   │       │   └── security/
-│   │       └── resources/
-│   │           └── application.properties
-│   └── pom.xml
+│   ├── pom.xml
+│   └── mvnw / mvnw.cmd
 │
-└── smart-campus-frontend/       # React Frontend
+└── client/                      # React Frontend (Vite)
     ├── src/
-    │   ├── components/
-    │   ├── pages/
-    │   ├── services/
-    │   ├── routes/
-    │   └── context/
+    ├── index.html
     └── package.json
 ```
 
@@ -69,8 +55,8 @@ it3030-paf-2026-smart-campus-groupXX/
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/it3030-paf-2026-smart-campus-groupXX.git
-cd it3030-paf-2026-smart-campus-groupXX/smart-campus-backend
+git clone https://github.com/YOUR_USERNAME/Online_Lecturehall_Booking.git
+cd Online_Lecturehall_Booking/server
 ```
 
 ### 2. Create the database
@@ -90,7 +76,7 @@ spring.jpa.database-platform=org.hibernate.dialect.MariaDBDialect
 
 ### 4. Run the backend
 ```bash
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 Backend runs on: `http://localhost:8080`
 
@@ -104,7 +90,7 @@ Backend runs on: `http://localhost:8080`
 
 ### 1. Go to frontend folder
 ```bash
-cd smart-campus-frontend
+cd ../client
 ```
 
 ### 2. Install dependencies
@@ -114,9 +100,9 @@ npm install
 
 ### 3. Start the app
 ```bash
-npm start
+npm run dev
 ```
-Frontend runs on: `http://localhost:3000`
+Frontend runs on: `http://localhost:5173`
 
 ---
 
