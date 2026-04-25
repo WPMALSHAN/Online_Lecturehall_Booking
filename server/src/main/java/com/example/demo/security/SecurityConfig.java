@@ -29,19 +29,36 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // Public endpoints - no token needed
+                        // Public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
-                        // Admin only
+
+                        // Facilities - GET for all roles, CUD for ADMIN only
+                        .requestMatchers(HttpMethod.GET, "/api/facilities/**")
+                        .hasAnyRole("STUDENT", "LECTURER", "TECHNICIAN", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/facilities/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/facilities/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/facilities/**").hasRole("ADMIN")
+
+                        // Assets - GET for all roles, CUD for ADMIN only
+                        .requestMatchers(HttpMethod.GET, "/api/assets/**")
+                        .hasAnyRole("STUDENT", "LECTURER", "TECHNICIAN", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/assets/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/assets/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/assets/**").hasRole("ADMIN")
+
+                        // Users - ADMIN only
                         .requestMatchers("/api/users/**").hasRole("ADMIN")
-                        // Technician endpoints
-                        .requestMatchers("/api/incidents/*/assign").hasRole("ADMIN")
-                        // Everything else needs login
+
+                        // Notifications - authenticated users
+                        .requestMatchers("/api/notifications/**")
+                        .hasAnyRole("STUDENT", "LECTURER", "TECHNICIAN", "ADMIN")
+
+                        // Everything else - authenticated
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
@@ -51,15 +68,20 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
-        configuration.setExposedHeaders(List.of("Authorization"));
-        configuration.setAllowCredentials(false);
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:3000"
+        ));
+        config.setAllowedMethods(List.of(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
+        ));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
 

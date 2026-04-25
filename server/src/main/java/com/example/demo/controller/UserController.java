@@ -73,14 +73,14 @@ public class UserController {
     }
 
     // GET /api/users/me
-    // Get my own profile - any logged-in user
+    // Get my own profile - any logged in user
     @GetMapping("/me")
     public ResponseEntity<User> getMyProfile(Authentication auth) {
         return ResponseEntity.ok(userService.getMyProfile(auth.getName()));
     }
 
     // PUT /api/users/me/change-password
-    // Change my password - any logged-in user
+    // Change my password - any logged in user
     @PutMapping("/me/change-password")
     public ResponseEntity<Map<String, String>> changePassword(
             Authentication auth,
