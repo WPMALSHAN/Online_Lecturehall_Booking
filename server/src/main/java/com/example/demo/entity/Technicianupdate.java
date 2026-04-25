@@ -28,3 +28,4 @@ public class TechnicianUpdate {
         this.date = LocalDateTime.now();
     }
 }
+

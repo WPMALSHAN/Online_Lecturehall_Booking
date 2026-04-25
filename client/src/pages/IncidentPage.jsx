@@ -49,18 +49,33 @@ export default function IncidentPage() {
     preferredContact: '',
   });
   const [createFiles, setCreateFiles] = useState([]);
+  const [createFormErrors, setCreateFormErrors] = useState({
+    location: '',
+    category: '',
+    description: '',
+    preferredContact: '',
+    files: '',
+  });
 
   const [commentText, setCommentText] = useState('');
+  const [commentError, setCommentError] = useState('');
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingCommentText, setEditingCommentText] = useState('');
+  const [editingCommentError, setEditingCommentError] = useState('');
 
   const [statusUpdateForm, setStatusUpdateForm] = useState({
     status: 'IN_PROGRESS',
     reason: '',
     resolutionNotes: '',
   });
+  const [statusFormErrors, setStatusFormErrors] = useState({
+    reason: '',
+    resolutionNotes: '',
+  });
   const [technicianId, setTechnicianId] = useState('');
+  const [technicianError, setTechnicianError] = useState('');
   const [extraFiles, setExtraFiles] = useState([]);
+  const [extraFilesError, setExtraFilesError] = useState('');
 
   const canAssign = role === 'ADMIN';
   const canUpdateStatus = role === 'ADMIN' || role === 'TECHNICIAN';
@@ -140,12 +155,70 @@ export default function IncidentPage() {
   const onCreateFormChange = (event) => {
     const { name: fieldName, value } = event.target;
     setCreateForm((previous) => ({ ...previous, [fieldName]: value }));
+    setCreateFormErrors((previous) => ({ ...previous, [fieldName]: '' }));
+  };
+
+  const hasOnlyImages = (files) => files.every((file) => file.type.startsWith('image/'));
+
+  const validateCreateForm = () => {
+    const errors = {
+      location: '',
+      category: '',
+      description: '',
+      preferredContact: '',
+      files: '',
+    };
+    let isValid = true;
+
+    if (!createForm.location.trim()) {
+      errors.location = 'Location is required.';
+      isValid = false;
+    } else if (createForm.location.trim().length < 3) {
+      errors.location = 'Location must be at least 3 characters.';
+      isValid = false;
+    }
+
+    if (!createForm.category.trim()) {
+      errors.category = 'Category is required.';
+      isValid = false;
+    } else if (createForm.category.trim().length < 3) {
+      errors.category = 'Category must be at least 3 characters.';
+      isValid = false;
+    }
+
+    if (!createForm.description.trim()) {
+      errors.description = 'Description is required.';
+      isValid = false;
+    } else if (createForm.description.trim().length < 10) {
+      errors.description = 'Description must be at least 10 characters.';
+      isValid = false;
+    }
+
+    if (createForm.preferredContact.trim() && createForm.preferredContact.trim().length < 5) {
+      errors.preferredContact = 'Preferred contact must be at least 5 characters.';
+      isValid = false;
+    }
+
+    if (createFiles.length > 3) {
+      errors.files = 'You can upload up to 3 images.';
+      isValid = false;
+    } else if (createFiles.length > 0 && !hasOnlyImages(createFiles)) {
+      errors.files = 'Only image files are allowed.';
+      isValid = false;
+    }
+
+    setCreateFormErrors(errors);
+    return isValid;
   };
 
   const onCreateIncident = async (event) => {
     event.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
+
+    if (!validateCreateForm()) {
+      return;
+    }
 
     try {
       await createIncident(token, createForm, createFiles);
@@ -158,6 +231,13 @@ export default function IncidentPage() {
         preferredContact: '',
       });
       setCreateFiles([]);
+      setCreateFormErrors({
+        location: '',
+        category: '',
+        description: '',
+        preferredContact: '',
+        files: '',
+      });
       await loadIncidents(statusFilter);
     } catch (error) {
       setErrorMessage(error.message);
@@ -166,9 +246,21 @@ export default function IncidentPage() {
 
   const onCreateComment = async (event) => {
     event.preventDefault();
-    if (!selectedIncidentId || !commentText.trim()) {
+    if (!selectedIncidentId) {
       return;
     }
+
+    if (!commentText.trim()) {
+      setCommentError('Comment cannot be empty.');
+      return;
+    }
+
+    if (commentText.trim().length < 2) {
+      setCommentError('Comment must be at least 2 characters.');
+      return;
+    }
+
+    setCommentError('');
 
     setErrorMessage('');
     setSuccessMessage('');
@@ -185,8 +277,16 @@ export default function IncidentPage() {
 
   const onUpdateComment = async (commentId) => {
     if (!editingCommentText.trim()) {
+      setEditingCommentError('Comment cannot be empty.');
       return;
     }
+
+    if (editingCommentText.trim().length < 2) {
+      setEditingCommentError('Comment must be at least 2 characters.');
+      return;
+    }
+
+    setEditingCommentError('');
 
     setErrorMessage('');
     setSuccessMessage('');
@@ -222,6 +322,27 @@ export default function IncidentPage() {
       return;
     }
 
+    const errors = { reason: '', resolutionNotes: '' };
+    let isValid = true;
+
+    if (statusUpdateForm.status === 'REJECTED' && !statusUpdateForm.reason.trim()) {
+      errors.reason = 'Reason is required for REJECTED status.';
+      isValid = false;
+    }
+
+    if (
+      (statusUpdateForm.status === 'RESOLVED' || statusUpdateForm.status === 'CLOSED') &&
+      !statusUpdateForm.resolutionNotes.trim()
+    ) {
+      errors.resolutionNotes = `Resolution notes are required for ${statusUpdateForm.status}.`;
+      isValid = false;
+    }
+
+    setStatusFormErrors(errors);
+    if (!isValid) {
+      return;
+    }
+
     setErrorMessage('');
     setSuccessMessage('');
 
@@ -237,9 +358,16 @@ export default function IncidentPage() {
 
   const onAssignTechnician = async (event) => {
     event.preventDefault();
-    if (!selectedIncidentId || !technicianId) {
+    if (!selectedIncidentId) {
       return;
     }
+
+    if (!technicianId) {
+      setTechnicianError('Please select a technician.');
+      return;
+    }
+
+    setTechnicianError('');
 
     setErrorMessage('');
     setSuccessMessage('');
@@ -256,9 +384,26 @@ export default function IncidentPage() {
 
   const onAddAttachments = async (event) => {
     event.preventDefault();
-    if (!selectedIncidentId || extraFiles.length === 0) {
+    if (!selectedIncidentId) {
       return;
     }
+
+    if (extraFiles.length === 0) {
+      setExtraFilesError('Please select at least one file.');
+      return;
+    }
+
+    if (extraFiles.length > 3) {
+      setExtraFilesError('You can upload up to 3 images at a time.');
+      return;
+    }
+
+    if (!hasOnlyImages(extraFiles)) {
+      setExtraFilesError('Only image files are allowed.');
+      return;
+    }
+
+    setExtraFilesError('');
 
     setErrorMessage('');
     setSuccessMessage('');
@@ -266,6 +411,7 @@ export default function IncidentPage() {
     try {
       await addIncidentAttachments(token, selectedIncidentId, extraFiles);
       setExtraFiles([]);
+      setExtraFilesError('');
       setSuccessMessage('Attachments uploaded.');
       await loadIncidentDetails(selectedIncidentId);
     } catch (error) {
@@ -308,7 +454,7 @@ export default function IncidentPage() {
 
       <section className="panel create-panel">
         <h2>Create New Incident</h2>
-        <form className="incident-form" onSubmit={onCreateIncident}>
+        <form className="incident-form" onSubmit={onCreateIncident} noValidate>
           <input
             name="location"
             value={createForm.location}
@@ -316,6 +462,7 @@ export default function IncidentPage() {
             placeholder="Location"
             required
           />
+          {createFormErrors.location ? <p className="form-error">{createFormErrors.location}</p> : null}
           <input
             name="category"
             value={createForm.category}
@@ -323,6 +470,7 @@ export default function IncidentPage() {
             placeholder="Category"
             required
           />
+          {createFormErrors.category ? <p className="form-error">{createFormErrors.category}</p> : null}
           <select name="priority" value={createForm.priority} onChange={onCreateFormChange}>
             {PRIORITIES.map((priority) => (
               <option key={priority} value={priority}>
@@ -336,6 +484,7 @@ export default function IncidentPage() {
             onChange={onCreateFormChange}
             placeholder="Preferred contact"
           />
+          {createFormErrors.preferredContact ? <p className="form-error">{createFormErrors.preferredContact}</p> : null}
           <textarea
             name="description"
             value={createForm.description}
@@ -343,15 +492,20 @@ export default function IncidentPage() {
             placeholder="Describe the issue"
             required
           />
+          {createFormErrors.description ? <p className="form-error">{createFormErrors.description}</p> : null}
           <label className="upload-field">
             Attach up to 3 images
             <input
               type="file"
               accept="image/*"
               multiple
-              onChange={(event) => setCreateFiles(Array.from(event.target.files || []).slice(0, 3))}
+              onChange={(event) => {
+                setCreateFiles(Array.from(event.target.files || []).slice(0, 3));
+                setCreateFormErrors((previous) => ({ ...previous, files: '' }));
+              }}
             />
           </label>
+          {createFormErrors.files ? <p className="form-error">{createFormErrors.files}</p> : null}
           <button type="submit">Create Incident</button>
         </form>
       </section>
@@ -452,22 +606,30 @@ export default function IncidentPage() {
                   ))}
                 </ul>
 
-                <form onSubmit={onAddAttachments} className="inline-form">
+                <form onSubmit={onAddAttachments} className="inline-form" noValidate>
                   <input
                     type="file"
                     multiple
                     accept="image/*"
-                    onChange={(event) =>
-                      setExtraFiles(Array.from(event.target.files || []).slice(0, 3))
-                    }
+                    onChange={(event) => {
+                      setExtraFiles(Array.from(event.target.files || []).slice(0, 3));
+                      setExtraFilesError('');
+                    }}
                   />
+                  {extraFilesError ? <p className="form-error">{extraFilesError}</p> : null}
                   <button type="submit">Upload</button>
                 </form>
               </div>
 
               {canAssign ? (
-                <form className="inline-form" onSubmit={onAssignTechnician}>
-                  <select value={technicianId} onChange={(event) => setTechnicianId(event.target.value)}>
+                <form className="inline-form" onSubmit={onAssignTechnician} noValidate>
+                  <select
+                    value={technicianId}
+                    onChange={(event) => {
+                      setTechnicianId(event.target.value);
+                      setTechnicianError('');
+                    }}
+                  >
                     <option value="">Select technician</option>
                     {technicians.map((technician) => (
                       <option key={technician.id} value={technician.id}>
@@ -475,21 +637,23 @@ export default function IncidentPage() {
                       </option>
                     ))}
                   </select>
+                  {technicianError ? <p className="form-error">{technicianError}</p> : null}
                   <button type="submit">Assign Technician</button>
                 </form>
               ) : null}
 
               {canUpdateStatus ? (
-                <form className="status-form" onSubmit={onStatusUpdate}>
+                <form className="status-form" onSubmit={onStatusUpdate} noValidate>
                   <h3>Update Status</h3>
                   <select
                     value={statusUpdateForm.status}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setStatusUpdateForm((previous) => ({
                         ...previous,
                         status: event.target.value,
-                      }))
-                    }
+                      }));
+                      setStatusFormErrors({ reason: '', resolutionNotes: '' });
+                    }}
                   >
                     {STATUSES.map((status) => (
                       <option key={status} value={status}>
@@ -499,24 +663,28 @@ export default function IncidentPage() {
                   </select>
                   <input
                     value={statusUpdateForm.reason}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setStatusUpdateForm((previous) => ({
                         ...previous,
                         reason: event.target.value,
-                      }))
-                    }
+                      }));
+                      setStatusFormErrors((previous) => ({ ...previous, reason: '' }));
+                    }}
                     placeholder="Reason (for REJECTED)"
                   />
+                  {statusFormErrors.reason ? <p className="form-error">{statusFormErrors.reason}</p> : null}
                   <textarea
                     value={statusUpdateForm.resolutionNotes}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setStatusUpdateForm((previous) => ({
                         ...previous,
                         resolutionNotes: event.target.value,
-                      }))
-                    }
+                      }));
+                      setStatusFormErrors((previous) => ({ ...previous, resolutionNotes: '' }));
+                    }}
                     placeholder="Resolution notes (for RESOLVED)"
                   />
+                  {statusFormErrors.resolutionNotes ? <p className="form-error">{statusFormErrors.resolutionNotes}</p> : null}
                   <button type="submit">Apply Status</button>
                 </form>
               ) : null}
@@ -524,13 +692,17 @@ export default function IncidentPage() {
               <section className="comments-block">
                 <h3>Comments</h3>
 
-                <form onSubmit={onCreateComment} className="inline-form comment-create">
+                <form onSubmit={onCreateComment} className="inline-form comment-create" noValidate>
                   <input
                     value={commentText}
-                    onChange={(event) => setCommentText(event.target.value)}
+                    onChange={(event) => {
+                      setCommentText(event.target.value);
+                      setCommentError('');
+                    }}
                     placeholder="Add a comment"
                     required
                   />
+                  {commentError ? <p className="form-error">{commentError}</p> : null}
                   <button type="submit">Post</button>
                 </form>
 
@@ -548,8 +720,12 @@ export default function IncidentPage() {
                         <div className="inline-form">
                           <input
                             value={editingCommentText}
-                            onChange={(event) => setEditingCommentText(event.target.value)}
+                            onChange={(event) => {
+                              setEditingCommentText(event.target.value);
+                              setEditingCommentError('');
+                            }}
                           />
+                          {editingCommentError ? <p className="form-error">{editingCommentError}</p> : null}
                           <button type="button" onClick={() => onUpdateComment(comment.id)}>
                             Save
                           </button>
@@ -558,6 +734,7 @@ export default function IncidentPage() {
                             onClick={() => {
                               setEditingCommentId(null);
                               setEditingCommentText('');
+                              setEditingCommentError('');
                             }}
                           >
                             Cancel
