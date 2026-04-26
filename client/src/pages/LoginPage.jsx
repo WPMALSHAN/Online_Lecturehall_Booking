@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
@@ -97,18 +98,32 @@ export default function LoginPage() {
             <label htmlFor="password" className="mb-1 block text-sm font-semibold text-blue-900">
               Password
             </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter your password"
-              className="w-full rounded-lg border border-blue-200 px-3 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-            />
+            <div className="flex gap-2">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Enter your password"
+                className="w-full rounded-lg border border-blue-200 px-3 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((previous) => !previous)}
+                className="rounded-lg border border-blue-200 bg-white px-3 py-2.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
             {fieldErrors.password ? (
               <p className="mt-1 text-xs font-medium text-red-600">{fieldErrors.password}</p>
             ) : null}
+            <p className="mt-2 text-right text-xs">
+              <Link className="font-semibold text-blue-600 hover:text-blue-800" to="/forgot-password">
+                Forgot password?
+              </Link>
+            </p>
           </div>
 
           {errorMessage ? (

@@ -1,6 +1,15 @@
 import { requestJson } from './apiClient';
 
-function authHeaders(token, hasJsonBody = true) {
+function resolveToken(tokenArg) {
+    if (tokenArg) {
+        return tokenArg;
+    }
+
+    return localStorage.getItem('token');
+}
+
+function authHeaders(tokenArg, hasJsonBody = true) {
+    const token = resolveToken(tokenArg);
   const headers = {
     Authorization: `Bearer ${token}`,
   };
@@ -14,7 +23,10 @@ function authHeaders(token, hasJsonBody = true) {
 
 export const bookingApi = {
     // User endpoints
-    createBooking: async (token, bookingData) => {
+    createBooking: async (tokenOrBookingData, maybeBookingData) => {
+        const bookingData = maybeBookingData || tokenOrBookingData;
+        const token = maybeBookingData ? tokenOrBookingData : undefined;
+
         return requestJson('/api/bookings', {
             method: 'POST',
             headers: authHeaders(token),
@@ -23,7 +35,7 @@ export const bookingApi = {
     },
     
     getUserBookings: async (token) => {
-        return requestJson('/api/bookings/my-bookings', {
+        return requestJson('/api/bookings/my', {
             headers: authHeaders(token, false)
         });
     },

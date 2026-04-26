@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const AUTH_STORAGE_KEY = 'smart-campus-auth';
+const TOKEN_STORAGE_KEY = 'token';
 
 function resolveApiBaseUrl() {
   const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
@@ -8,6 +9,12 @@ function resolveApiBaseUrl() {
 }
 
 function getStoredToken() {
+  const directToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+
+  if (directToken) {
+    return directToken;
+  }
+
   const raw = localStorage.getItem(AUTH_STORAGE_KEY);
 
   if (!raw) {

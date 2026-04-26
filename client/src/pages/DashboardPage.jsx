@@ -10,8 +10,14 @@ const ROLE_CARDS = {
     {
       title: 'Book a Room',
       description: 'Submit room booking requests and track approval status from admins.',
-      actionLabel: 'Open Booking Module',
-      actionPath: '/dashboard/bookings',
+      actionLabel: 'Book Facility',
+      actionPath: '/dashboard/bookings/book',
+    },
+    {
+      title: 'My Booking Requests',
+      description: 'View statuses of your pending, approved, and rejected booking requests.',
+      actionLabel: 'View My Bookings',
+      actionPath: '/dashboard/bookings/my',
     },
     {
       title: 'Report an Issue',
@@ -30,8 +36,14 @@ const ROLE_CARDS = {
     {
       title: 'Faculty Booking Requests',
       description: 'Request lecture hall bookings and monitor approvals.',
-      actionLabel: 'Open Booking Module',
-      actionPath: '/dashboard/bookings',
+      actionLabel: 'Book Facility',
+      actionPath: '/dashboard/bookings/book',
+    },
+    {
+      title: 'My Booking Requests',
+      description: 'Review all your booking statuses in one place.',
+      actionLabel: 'View My Bookings',
+      actionPath: '/dashboard/bookings/my',
     },
     {
       title: 'Facility Issues',
@@ -64,8 +76,8 @@ const ROLE_CARDS = {
     {
       title: 'Booking Administration',
       description: 'Approve or reject room booking requests from users.',
-      actionLabel: 'Open Booking Module',
-      actionPath: '/dashboard/bookings',
+      actionLabel: 'Open Admin Bookings',
+      actionPath: '/dashboard/bookings/admin',
     },
     {
       title: 'Incident Management',

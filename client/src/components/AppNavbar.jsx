@@ -49,6 +49,26 @@ export default function AppNavbar({ unreadCount = 0 }) {
               </span>
             ) : null}
           </NavLink>
+          <NavLink
+            to="/dashboard/facilities"
+            className={({ isActive }) =>
+              `rounded-md px-3 py-2 text-sm font-medium transition ${
+                isActive ? 'bg-blue-100 text-blue-700' : 'text-blue-700 hover:bg-blue-50'
+              }`
+            }
+          >
+            Facilities
+          </NavLink>
+          <NavLink
+            to="/dashboard/assets"
+            className={({ isActive }) =>
+              `rounded-md px-3 py-2 text-sm font-medium transition ${
+                isActive ? 'bg-blue-100 text-blue-700' : 'text-blue-700 hover:bg-blue-50'
+              }`
+            }
+          >
+            Assets
+          </NavLink>
         </nav>
 
         <div className="flex items-center gap-3">

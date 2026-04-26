@@ -23,6 +23,7 @@ export default function RegisterPage() {
   });
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
@@ -35,7 +36,7 @@ export default function RegisterPage() {
   };
 
   const validateForm = () => {
-    const errors = { name: '', email: '', password: '', role: '' };
+    const errors = { name: '', email: '', password: '' };
     let isValid = true;
 
     if (!formData.name.trim()) {
@@ -82,7 +83,10 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await registerUser(formData);
+      const response = await registerUser({
+        ...formData,
+        role: 'STUDENT',
+      });
       signIn(response);
       navigate('/dashboard', { replace: true });
     } catch (error) {
@@ -97,7 +101,9 @@ export default function RegisterPage() {
       <section className="mx-auto w-full max-w-md rounded-2xl border border-blue-100 bg-white p-7 shadow-xl shadow-blue-100/60">
         <p className="text-xs font-semibold uppercase tracking-[0.15em] text-blue-600">Smart Campus</p>
         <h1 className="mt-2 text-2xl font-bold text-blue-950">Create Account</h1>
-        <p className="mt-2 text-sm text-blue-700">Choose your role and join the campus portal.</p>
+        <p className="mt-2 text-sm text-blue-700">
+          New accounts are created as STUDENT. Admin can update roles later.
+        </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
           <div>
@@ -140,15 +146,24 @@ export default function RegisterPage() {
             <label htmlFor="password" className="mb-1 block text-sm font-semibold text-blue-900">
               Password
             </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="At least 6 characters"
-              className="w-full rounded-lg border border-blue-200 px-3 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-            />
+            <div className="flex gap-2">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="At least 6 characters"
+                className="w-full rounded-lg border border-blue-200 px-3 py-2.5 text-sm text-blue-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((previous) => !previous)}
+                className="rounded-lg border border-blue-200 bg-white px-3 py-2.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
             {fieldErrors.password ? (
               <p className="mt-1 text-xs font-medium text-red-600">{fieldErrors.password}</p>
             ) : null}

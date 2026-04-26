@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'smart-campus-auth';
+const TOKEN_KEY = 'token';
 
 const AuthContext = createContext(null);
 
@@ -24,11 +25,18 @@ export function AuthProvider({ children }) {
   const signIn = (authResponse) => {
     setAuth(authResponse);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(authResponse));
+
+    if (authResponse?.token) {
+      localStorage.setItem(TOKEN_KEY, authResponse.token);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+    }
   };
 
   const signOut = () => {
     setAuth(null);
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(TOKEN_KEY);
   };
 
   const value = useMemo(
