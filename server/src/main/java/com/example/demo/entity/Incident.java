@@ -24,6 +24,10 @@ public class Incident {
     @JoinColumn(name = "technician_id")
     private User assignedTechnician;
 
+    @ManyToOne
+    @JoinColumn(name = "asset_id")
+    private Asset relatedAsset;
+
     private String location;
     private String category;      // AC, projector, chair, etc.
     private String description;

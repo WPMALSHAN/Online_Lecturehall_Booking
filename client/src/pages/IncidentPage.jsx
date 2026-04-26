@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { requestJson } from '../services/apiClient';
+import { fetchAssets } from '../services/assetApi';
 import {
-  addIncidentAttachments,
   addIncidentComment,
   assignTechnician,
+  closeIncident,
   createIncident,
   deleteIncidentAttachment,
-  deleteIncidentComment,
   getIncidentById,
   getIncidentComments,
   getIncidents,
   getUsers,
-  updateIncidentComment,
-  updateIncidentStatus,
+  linkIncidentAsset,
+  rejectIncident,
+  resolveIncident,
 } from '../services/incidentApi';
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH'];
@@ -35,6 +37,7 @@ export default function IncidentPage() {
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [comments, setComments] = useState([]);
   const [technicians, setTechnicians] = useState([]);
+  const [assets, setAssets] = useState([]);
 
   const [statusFilter, setStatusFilter] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -47,38 +50,26 @@ export default function IncidentPage() {
     description: '',
     priority: 'MEDIUM',
     preferredContact: '',
+    assetId: '',
   });
-  const [createFiles, setCreateFiles] = useState([]);
   const [createFormErrors, setCreateFormErrors] = useState({
     location: '',
     category: '',
     description: '',
     preferredContact: '',
-    files: '',
   });
 
   const [commentText, setCommentText] = useState('');
   const [commentError, setCommentError] = useState('');
-  const [editingCommentId, setEditingCommentId] = useState(null);
-  const [editingCommentText, setEditingCommentText] = useState('');
-  const [editingCommentError, setEditingCommentError] = useState('');
 
-  const [statusUpdateForm, setStatusUpdateForm] = useState({
-    status: 'IN_PROGRESS',
-    reason: '',
-    resolutionNotes: '',
-  });
-  const [statusFormErrors, setStatusFormErrors] = useState({
-    reason: '',
-    resolutionNotes: '',
-  });
   const [technicianId, setTechnicianId] = useState('');
   const [technicianError, setTechnicianError] = useState('');
-  const [extraFiles, setExtraFiles] = useState([]);
-  const [extraFilesError, setExtraFilesError] = useState('');
+  const [assetIdToLink, setAssetIdToLink] = useState('');
+  const [assetLinkError, setAssetLinkError] = useState('');
 
   const canAssign = role === 'ADMIN';
-  const canUpdateStatus = role === 'ADMIN' || role === 'TECHNICIAN';
+  const canResolve = role === 'TECHNICIAN';
+  const canPostUpdate = role === 'TECHNICIAN';
 
   const selectedIncidentSummary = useMemo(
     () => incidents.find((incident) => incident.id === selectedIncidentId) || null,
@@ -90,7 +81,24 @@ export default function IncidentPage() {
     setErrorMessage('');
 
     try {
-      const data = await getIncidents(token, currentFilter || undefined);
+      let data = [];
+
+      if (role === 'ADMIN') {
+        data = await getIncidents(token, currentFilter || undefined);
+      } else if (role === 'TECHNICIAN') {
+        data = await requestJson('/api/incidents/assigned', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } else {
+        data = await requestJson('/api/incidents/my', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+
+      if (role !== 'ADMIN' && currentFilter) {
+        data = data.filter((incident) => incident.status === currentFilter);
+      }
+
       setIncidents(data);
 
       if (data.length > 0) {
@@ -152,13 +160,21 @@ export default function IncidentPage() {
       });
   }, [canAssign, token]);
 
+  useEffect(() => {
+    fetchAssets()
+      .then((data) => {
+        setAssets(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        setAssets([]);
+      });
+  }, []);
+
   const onCreateFormChange = (event) => {
     const { name: fieldName, value } = event.target;
     setCreateForm((previous) => ({ ...previous, [fieldName]: value }));
     setCreateFormErrors((previous) => ({ ...previous, [fieldName]: '' }));
   };
-
-  const hasOnlyImages = (files) => files.every((file) => file.type.startsWith('image/'));
 
   const validateCreateForm = () => {
     const errors = {
@@ -166,7 +182,6 @@ export default function IncidentPage() {
       category: '',
       description: '',
       preferredContact: '',
-      files: '',
     };
     let isValid = true;
 
@@ -199,14 +214,6 @@ export default function IncidentPage() {
       isValid = false;
     }
 
-    if (createFiles.length > 3) {
-      errors.files = 'You can upload up to 3 images.';
-      isValid = false;
-    } else if (createFiles.length > 0 && !hasOnlyImages(createFiles)) {
-      errors.files = 'Only image files are allowed.';
-      isValid = false;
-    }
-
     setCreateFormErrors(errors);
     return isValid;
   };
@@ -221,7 +228,12 @@ export default function IncidentPage() {
     }
 
     try {
-      await createIncident(token, createForm, createFiles);
+      const payload = {
+        ...createForm,
+        assetId: createForm.assetId ? Number(createForm.assetId) : null,
+      };
+
+      await createIncident(token, payload, []);
       setSuccessMessage('Incident created successfully.');
       setCreateForm({
         location: '',
@@ -229,14 +241,13 @@ export default function IncidentPage() {
         description: '',
         priority: 'MEDIUM',
         preferredContact: '',
+        assetId: '',
       });
-      setCreateFiles([]);
       setCreateFormErrors({
         location: '',
         category: '',
         description: '',
         preferredContact: '',
-        files: '',
       });
       await loadIncidents(statusFilter);
     } catch (error) {
@@ -247,6 +258,11 @@ export default function IncidentPage() {
   const onCreateComment = async (event) => {
     event.preventDefault();
     if (!selectedIncidentId) {
+      return;
+    }
+
+    if (!canPostUpdate) {
+      setErrorMessage('Only technicians can post incident updates.');
       return;
     }
 
@@ -275,71 +291,26 @@ export default function IncidentPage() {
     }
   };
 
-  const onUpdateComment = async (commentId) => {
-    if (!editingCommentText.trim()) {
-      setEditingCommentError('Comment cannot be empty.');
-      return;
-    }
-
-    if (editingCommentText.trim().length < 2) {
-      setEditingCommentError('Comment must be at least 2 characters.');
-      return;
-    }
-
-    setEditingCommentError('');
-
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    try {
-      await updateIncidentComment(token, commentId, editingCommentText.trim());
-      setEditingCommentId(null);
-      setEditingCommentText('');
-      setSuccessMessage('Comment updated.');
-      await loadIncidentDetails(selectedIncidentId);
-    } catch (error) {
-      setErrorMessage(error.message);
-    }
-  };
-
-  const onDeleteComment = async (commentId) => {
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    try {
-      await deleteIncidentComment(token, commentId);
-      setSuccessMessage('Comment deleted.');
-      await loadIncidentDetails(selectedIncidentId);
-    } catch (error) {
-      setErrorMessage(error.message);
-    }
-  };
-
-  const onStatusUpdate = async (event) => {
-    event.preventDefault();
-
+  const onResolveIncident = async () => {
     if (!selectedIncidentId) {
       return;
     }
 
-    const errors = { reason: '', resolutionNotes: '' };
-    let isValid = true;
+    setErrorMessage('');
+    setSuccessMessage('');
 
-    if (statusUpdateForm.status === 'REJECTED' && !statusUpdateForm.reason.trim()) {
-      errors.reason = 'Reason is required for REJECTED status.';
-      isValid = false;
+    try {
+      await resolveIncident(token, selectedIncidentId);
+      setSuccessMessage('Incident marked as resolved.');
+      await loadIncidents(statusFilter);
+      await loadIncidentDetails(selectedIncidentId);
+    } catch (error) {
+      setErrorMessage(error.message);
     }
+  };
 
-    if (
-      (statusUpdateForm.status === 'RESOLVED' || statusUpdateForm.status === 'CLOSED') &&
-      !statusUpdateForm.resolutionNotes.trim()
-    ) {
-      errors.resolutionNotes = `Resolution notes are required for ${statusUpdateForm.status}.`;
-      isValid = false;
-    }
-
-    setStatusFormErrors(errors);
-    if (!isValid) {
+  const onRejectIncident = async () => {
+    if (!selectedIncidentId) {
       return;
     }
 
@@ -347,8 +318,26 @@ export default function IncidentPage() {
     setSuccessMessage('');
 
     try {
-      await updateIncidentStatus(token, selectedIncidentId, statusUpdateForm);
-      setSuccessMessage('Incident status updated.');
+      await rejectIncident(token, selectedIncidentId);
+      setSuccessMessage('Incident rejected.');
+      await loadIncidents(statusFilter);
+      await loadIncidentDetails(selectedIncidentId);
+    } catch (error) {
+      setErrorMessage(error.message);
+    }
+  };
+
+  const onCloseIncident = async () => {
+    if (!selectedIncidentId) {
+      return;
+    }
+
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      await closeIncident(token, selectedIncidentId);
+      setSuccessMessage('Incident closed.');
       await loadIncidents(statusFilter);
       await loadIncidentDetails(selectedIncidentId);
     } catch (error) {
@@ -382,37 +371,25 @@ export default function IncidentPage() {
     }
   };
 
-  const onAddAttachments = async (event) => {
+  const onLinkAsset = async (event) => {
     event.preventDefault();
     if (!selectedIncidentId) {
       return;
     }
 
-    if (extraFiles.length === 0) {
-      setExtraFilesError('Please select at least one file.');
+    if (!assetIdToLink) {
+      setAssetLinkError('Please select an asset.');
       return;
     }
 
-    if (extraFiles.length > 3) {
-      setExtraFilesError('You can upload up to 3 images at a time.');
-      return;
-    }
-
-    if (!hasOnlyImages(extraFiles)) {
-      setExtraFilesError('Only image files are allowed.');
-      return;
-    }
-
-    setExtraFilesError('');
-
+    setAssetLinkError('');
     setErrorMessage('');
     setSuccessMessage('');
 
     try {
-      await addIncidentAttachments(token, selectedIncidentId, extraFiles);
-      setExtraFiles([]);
-      setExtraFilesError('');
-      setSuccessMessage('Attachments uploaded.');
+      await linkIncidentAsset(token, selectedIncidentId, Number(assetIdToLink));
+      setSuccessMessage('Asset linked to incident.');
+      await loadIncidents(statusFilter);
       await loadIncidentDetails(selectedIncidentId);
     } catch (error) {
       setErrorMessage(error.message);
@@ -452,63 +429,52 @@ export default function IncidentPage() {
       {errorMessage ? <p className="alert error">{errorMessage}</p> : null}
       {successMessage ? <p className="alert success">{successMessage}</p> : null}
 
-      <section className="panel create-panel">
-        <h2>Create New Incident</h2>
-        <form className="incident-form" onSubmit={onCreateIncident} noValidate>
-          <input
-            name="location"
-            value={createForm.location}
-            onChange={onCreateFormChange}
-            placeholder="Location"
-            required
-          />
-          {createFormErrors.location ? <p className="form-error">{createFormErrors.location}</p> : null}
-          <input
-            name="category"
-            value={createForm.category}
-            onChange={onCreateFormChange}
-            placeholder="Category"
-            required
-          />
-          {createFormErrors.category ? <p className="form-error">{createFormErrors.category}</p> : null}
-          <select name="priority" value={createForm.priority} onChange={onCreateFormChange}>
-            {PRIORITIES.map((priority) => (
-              <option key={priority} value={priority}>
-                {priority}
-              </option>
-            ))}
-          </select>
-          <input
-            name="preferredContact"
-            value={createForm.preferredContact}
-            onChange={onCreateFormChange}
-            placeholder="Preferred contact"
-          />
-          {createFormErrors.preferredContact ? <p className="form-error">{createFormErrors.preferredContact}</p> : null}
-          <textarea
-            name="description"
-            value={createForm.description}
-            onChange={onCreateFormChange}
-            placeholder="Describe the issue"
-            required
-          />
-          {createFormErrors.description ? <p className="form-error">{createFormErrors.description}</p> : null}
-          <label className="upload-field">
-            Attach up to 3 images
+      {role !== 'ADMIN' ? (
+        <section className="panel create-panel">
+          <h2>Create New Incident</h2>
+          <form className="incident-form" onSubmit={onCreateIncident} noValidate>
             <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(event) => {
-                setCreateFiles(Array.from(event.target.files || []).slice(0, 3));
-                setCreateFormErrors((previous) => ({ ...previous, files: '' }));
-              }}
+              name="location"
+              value={createForm.location}
+              onChange={onCreateFormChange}
+              placeholder="Location"
+              required
             />
-          </label>
-          {createFormErrors.files ? <p className="form-error">{createFormErrors.files}</p> : null}
-          <button type="submit">Create Incident</button>
-        </form>
-      </section>
+            {createFormErrors.location ? <p className="form-error">{createFormErrors.location}</p> : null}
+            <input
+              name="category"
+              value={createForm.category}
+              onChange={onCreateFormChange}
+              placeholder="Category"
+              required
+            />
+            {createFormErrors.category ? <p className="form-error">{createFormErrors.category}</p> : null}
+            <select name="priority" value={createForm.priority} onChange={onCreateFormChange}>
+              {PRIORITIES.map((priority) => (
+                <option key={priority} value={priority}>
+                  {priority}
+                </option>
+              ))}
+            </select>
+            <input
+              name="preferredContact"
+              value={createForm.preferredContact}
+              onChange={onCreateFormChange}
+              placeholder="Preferred contact"
+            />
+            {createFormErrors.preferredContact ? <p className="form-error">{createFormErrors.preferredContact}</p> : null}
+            <textarea
+              name="description"
+              value={createForm.description}
+              onChange={onCreateFormChange}
+              placeholder="Describe the issue"
+              required
+            />
+            {createFormErrors.description ? <p className="form-error">{createFormErrors.description}</p> : null}
+            <button type="submit">Create Incident</button>
+          </form>
+        </section>
+      ) : null}
 
       <section className="incident-layout">
         <aside className="panel list-panel">
@@ -567,10 +533,14 @@ export default function IncidentPage() {
                   <strong>Location:</strong> {selectedIncident.location}
                 </p>
                 <p>
-                  <strong>Reporter:</strong> {selectedIncident.reportedByName}
+                  <strong>Reporter:</strong> {selectedIncident.reportedByName || selectedIncident.reportedBy?.name || '-'}
                 </p>
                 <p>
-                  <strong>Technician:</strong> {selectedIncident.assignedTechnicianName || '-'}
+                  <strong>Technician:</strong> {selectedIncident.assignedTechnicianName || selectedIncident.assignedTechnician?.name || '-'}
+                </p>
+                <p>
+                  <strong>Related Asset:</strong>{' '}
+                  {selectedIncident.relatedAsset ? `${selectedIncident.relatedAsset.name} (${selectedIncident.relatedAsset.location})` : '-'}
                 </p>
                 <p>
                   <strong>Created:</strong> {formatDateTime(selectedIncident.createdAt)}
@@ -592,6 +562,14 @@ export default function IncidentPage() {
                         />
                       ) : (
                         <div className="attachment-preview attachment-preview-fallback">
+                        <select name="assetId" value={createForm.assetId} onChange={onCreateFormChange}>
+                          <option value="">Optional: select related asset</option>
+                          {assets.map((asset) => (
+                            <option key={asset.id} value={asset.id}>
+                              #{asset.id} - {asset.name} ({asset.location})
+                            </option>
+                          ))}
+                        </select>
                           <span>{file.originalFileName}</span>
                         </div>
                       )}
@@ -606,19 +584,6 @@ export default function IncidentPage() {
                   ))}
                 </ul>
 
-                <form onSubmit={onAddAttachments} className="inline-form" noValidate>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={(event) => {
-                      setExtraFiles(Array.from(event.target.files || []).slice(0, 3));
-                      setExtraFilesError('');
-                    }}
-                  />
-                  {extraFilesError ? <p className="form-error">{extraFilesError}</p> : null}
-                  <button type="submit">Upload</button>
-                </form>
               </div>
 
               {canAssign ? (
@@ -642,124 +607,77 @@ export default function IncidentPage() {
                 </form>
               ) : null}
 
-              {canUpdateStatus ? (
-                <form className="status-form" onSubmit={onStatusUpdate} noValidate>
-                  <h3>Update Status</h3>
+              {canAssign ? (
+                <form className="inline-form" onSubmit={onLinkAsset} noValidate>
                   <select
-                    value={statusUpdateForm.status}
+                    value={assetIdToLink}
                     onChange={(event) => {
-                      setStatusUpdateForm((previous) => ({
-                        ...previous,
-                        status: event.target.value,
-                      }));
-                      setStatusFormErrors({ reason: '', resolutionNotes: '' });
+                      setAssetIdToLink(event.target.value);
+                      setAssetLinkError('');
                     }}
                   >
-                    {STATUSES.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
+                    <option value="">Select asset for incident</option>
+                    {assets.map((asset) => (
+                      <option key={asset.id} value={asset.id}>
+                        #{asset.id} - {asset.name} ({asset.location})
                       </option>
                     ))}
                   </select>
-                  <input
-                    value={statusUpdateForm.reason}
-                    onChange={(event) => {
-                      setStatusUpdateForm((previous) => ({
-                        ...previous,
-                        reason: event.target.value,
-                      }));
-                      setStatusFormErrors((previous) => ({ ...previous, reason: '' }));
-                    }}
-                    placeholder="Reason (for REJECTED)"
-                  />
-                  {statusFormErrors.reason ? <p className="form-error">{statusFormErrors.reason}</p> : null}
-                  <textarea
-                    value={statusUpdateForm.resolutionNotes}
-                    onChange={(event) => {
-                      setStatusUpdateForm((previous) => ({
-                        ...previous,
-                        resolutionNotes: event.target.value,
-                      }));
-                      setStatusFormErrors((previous) => ({ ...previous, resolutionNotes: '' }));
-                    }}
-                    placeholder="Resolution notes (for RESOLVED)"
-                  />
-                  {statusFormErrors.resolutionNotes ? <p className="form-error">{statusFormErrors.resolutionNotes}</p> : null}
-                  <button type="submit">Apply Status</button>
+                  {assetLinkError ? <p className="form-error">{assetLinkError}</p> : null}
+                  <button type="submit">Link Asset</button>
                 </form>
               ) : null}
 
-              <section className="comments-block">
-                <h3>Comments</h3>
+              {canResolve && (selectedIncident.status === 'OPEN' || selectedIncident.status === 'IN_PROGRESS') ? (
+                <div className="status-form">
+                  <h3>Technician Action</h3>
+                  <button type="button" onClick={onResolveIncident}>Mark as Resolved</button>
+                </div>
+              ) : null}
 
-                <form onSubmit={onCreateComment} className="inline-form comment-create" noValidate>
-                  <input
-                    value={commentText}
-                    onChange={(event) => {
-                      setCommentText(event.target.value);
-                      setCommentError('');
-                    }}
-                    placeholder="Add a comment"
-                    required
-                  />
-                  {commentError ? <p className="form-error">{commentError}</p> : null}
-                  <button type="submit">Post</button>
-                </form>
+              {canAssign ? (
+                <div className="status-form">
+                  <h3>Admin Actions</h3>
+                  {selectedIncident.status === 'OPEN' ? (
+                    <button type="button" onClick={onRejectIncident}>Reject Incident</button>
+                  ) : null}
+                  {selectedIncident.status === 'RESOLVED' ? (
+                    <button type="button" onClick={onCloseIncident}>Close Incident</button>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <section className="comments-block">
+                <h3>Updates</h3>
+
+                {canPostUpdate ? (
+                  <form onSubmit={onCreateComment} className="inline-form comment-create" noValidate>
+                    <input
+                      value={commentText}
+                      onChange={(event) => {
+                        setCommentText(event.target.value);
+                        setCommentError('');
+                      }}
+                      placeholder="Add an update"
+                      required
+                    />
+                    {commentError ? <p className="form-error">{commentError}</p> : null}
+                    <button type="submit">Post Update</button>
+                  </form>
+                ) : (
+                  <p className="form-error">Only technicians can post updates for incidents.</p>
+                )}
 
                 <ul className="comment-list">
                   {comments.map((comment) => (
                     <li key={comment.id}>
                       <header>
-                        <strong>{comment.authorName}</strong>
+                        <strong>{comment.technicianName || comment.authorName || 'Technician'}</strong>
                         <small>
-                          {comment.authorRole} | {formatDateTime(comment.updatedAt)}
+                          {comment.authorRole || 'TECHNICIAN'} | {formatDateTime(comment.date || comment.updatedAt || comment.createdAt)}
                         </small>
                       </header>
-
-                      {editingCommentId === comment.id ? (
-                        <div className="inline-form">
-                          <input
-                            value={editingCommentText}
-                            onChange={(event) => {
-                              setEditingCommentText(event.target.value);
-                              setEditingCommentError('');
-                            }}
-                          />
-                          {editingCommentError ? <p className="form-error">{editingCommentError}</p> : null}
-                          <button type="button" onClick={() => onUpdateComment(comment.id)}>
-                            Save
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingCommentId(null);
-                              setEditingCommentText('');
-                              setEditingCommentError('');
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <p>{comment.message}</p>
-                      )}
-
-                      {editingCommentId !== comment.id ? (
-                        <div className="comment-actions">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingCommentId(comment.id);
-                              setEditingCommentText(comment.message);
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button type="button" onClick={() => onDeleteComment(comment.id)}>
-                            Delete
-                          </button>
-                        </div>
-                      ) : null}
+                      <p>{comment.updateText || comment.message || '-'}</p>
                     </li>
                   ))}
                 </ul>

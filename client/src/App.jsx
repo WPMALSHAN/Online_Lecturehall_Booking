@@ -20,6 +20,9 @@ import ReportIncidentPage from './pages/ReportIncidentPage'
 import MyIncidentsPage from './pages/MyIncidentsPage'
 import AdminIncidentsPage from './pages/AdminIncidentsPage'
 import TechnicianPage from './pages/TechnicianPage'
+import AdminFacilitiesPage from './pages/AdminFacilitiesPage'
+import AdminUsersPage from './pages/AdminUsersPage'
+import AdminTechnicianFeedbackPage from './pages/AdminTechnicianFeedbackPage'
 import './App.css'
 
 function App() {
@@ -58,6 +61,9 @@ function App() {
       <Route path="/dashboard/incidents/admin" element={<ProtectedRoute><AdminIncidentsPage /></ProtectedRoute>} />
       <Route path="/dashboard/incidents/technician" element={<ProtectedRoute><TechnicianPage /></ProtectedRoute>} />
       <Route path="/dashboard/facilities" element={<ProtectedRoute><FacilitiesPage /></ProtectedRoute>} />
+      <Route path="/dashboard/facilities/admin" element={<ProtectedRoute><AdminFacilitiesPage /></ProtectedRoute>} />
+      <Route path="/dashboard/users/admin" element={<ProtectedRoute><AdminUsersPage /></ProtectedRoute>} />
+      <Route path="/dashboard/feedback/admin" element={<ProtectedRoute><AdminTechnicianFeedbackPage /></ProtectedRoute>} />
       <Route path="/dashboard/assets" element={<ProtectedRoute><AssetsPage /></ProtectedRoute>} />
       <Route path="/dashboard/profile" element={<ProtectedRoute><ModulePlaceholderPage title="Profile" /></ProtectedRoute>} />
       <Route path="/dashboard/settings" element={<ProtectedRoute><ModulePlaceholderPage title="Settings" /></ProtectedRoute>} />

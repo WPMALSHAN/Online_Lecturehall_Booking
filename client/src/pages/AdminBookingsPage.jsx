@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import AppNavbar from '../components/AppNavbar';
 import { useAuth } from '../context/AuthContext';
 import { bookingApi } from '../services/bookingApi';
@@ -107,7 +107,15 @@ export default function AdminBookingsPage() {
       <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-lg shadow-blue-100/60">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-blue-600">Smart Campus</p>
-          <h1 className="mt-2 text-2xl font-bold text-blue-950">Admin Bookings</h1>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="mt-2 text-2xl font-bold text-blue-950">Admin Bookings</h1>
+            <Link
+              to="/dashboard/facilities/admin"
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              🏛 Manage Facilities
+            </Link>
+          </div>
           <p className="mt-2 text-sm text-blue-700">Review all booking requests and decide approvals.</p>
 
           {errorMessage ? (

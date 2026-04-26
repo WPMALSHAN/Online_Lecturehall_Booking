@@ -3,10 +3,12 @@ package com.example.demo.service;
 import com.example.demo.dto.BookingRequest;
 import com.example.demo.entity.Booking;
 import com.example.demo.entity.Facility;
+import com.example.demo.entity.Notification;
 import com.example.demo.entity.User;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.BookingRepository;
 import com.example.demo.repository.FacilityRepository;
+import com.example.demo.repository.NotificationRepository;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,16 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final FacilityRepository facilityRepository;
     private final UserRepository userRepository;
+    private final NotificationRepository notificationRepository;
+
+    // ─── Internal helper: persist a notification ──────────────────────────────
+    private void notify(User user, String message) {
+        Notification n = Notification.builder()
+                .user(user)
+                .message(message)
+                .build();
+        notificationRepository.save(n);
+    }
 
     // Create booking with conflict check
     public Booking createBooking(BookingRequest request, String email) {
@@ -51,6 +63,13 @@ public class BookingService {
         );
 
         if (!conflicts.isEmpty()) {
+            // 🔔 Notify the user that the slot is already taken
+            notify(user,
+                    "⚠️ Booking conflict: " + facility.getName() +
+                    " is already booked on " + request.getDate() +
+                    " from " + request.getStartTime() + " to " + request.getEndTime() +
+                    ". Please choose a different time slot.");
+
             throw new RuntimeException(
                     "Facility already booked for this time slot. " +
                             "Please choose a different time."
@@ -69,7 +88,16 @@ public class BookingService {
                 .status(Booking.Status.PENDING)
                 .build();
 
-        return bookingRepository.save(booking);
+        Booking saved = bookingRepository.save(booking);
+
+        // 🔔 Notify user that their booking was submitted successfully
+        notify(user,
+                "✅ Booking request submitted for " + facility.getName() +
+                " on " + request.getDate() +
+                " from " + request.getStartTime() + " to " + request.getEndTime() +
+                ". Status: PENDING — awaiting admin approval.");
+
+        return saved;
     }
 
     // Get my bookings
@@ -99,7 +127,16 @@ public class BookingService {
         }
 
         booking.setStatus(Booking.Status.APPROVED);
-        return bookingRepository.save(booking);
+        Booking saved = bookingRepository.save(booking);
+
+        // 🔔 Notify the booking owner
+        notify(booking.getUser(),
+                "🎉 Your booking for " + booking.getFacility().getName() +
+                " on " + booking.getDate() +
+                " from " + booking.getStartTime() + " to " + booking.getEndTime() +
+                " has been APPROVED.");
+
+        return saved;
     }
 
     // Reject booking (Admin)
@@ -113,7 +150,16 @@ public class BookingService {
 
         booking.setStatus(Booking.Status.REJECTED);
         booking.setRejectionReason(reason);
-        return bookingRepository.save(booking);
+        Booking saved = bookingRepository.save(booking);
+
+        // 🔔 Notify the booking owner
+        notify(booking.getUser(),
+                "❌ Your booking for " + booking.getFacility().getName() +
+                " on " + booking.getDate() +
+                " from " + booking.getStartTime() + " to " + booking.getEndTime() +
+                " has been REJECTED. Reason: " + reason);
+
+        return saved;
     }
 
     // Cancel booking (User cancels own booking)
@@ -131,7 +177,16 @@ public class BookingService {
         }
 
         booking.setStatus(Booking.Status.CANCELLED);
-        return bookingRepository.save(booking);
+        Booking saved = bookingRepository.save(booking);
+
+        // 🔔 Notify user of the cancellation
+        notify(booking.getUser(),
+                "🚫 Your booking for " + booking.getFacility().getName() +
+                " on " + booking.getDate() +
+                " from " + booking.getStartTime() + " to " + booking.getEndTime() +
+                " has been CANCELLED.");
+
+        return saved;
     }
 
     // Get booking by ID
@@ -139,4 +194,4 @@ public class BookingService {
         return bookingRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
     }
-}
+}

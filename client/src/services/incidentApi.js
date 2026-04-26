@@ -53,11 +53,24 @@ export function createIncident(token, data, files) {
   });
 }
 
-export function updateIncidentStatus(token, incidentId, payload) {
-  return requestJson(`/api/incidents/${incidentId}/status`, {
-    method: 'PATCH',
-    headers: authHeaders(token),
-    body: JSON.stringify(payload),
+export function resolveIncident(token, incidentId) {
+  return requestJson(`/api/incidents/${incidentId}/resolve`, {
+    method: 'PUT',
+    headers: authHeaders(token, false),
+  });
+}
+
+export function closeIncident(token, incidentId) {
+  return requestJson(`/api/incidents/${incidentId}/close`, {
+    method: 'PUT',
+    headers: authHeaders(token, false),
+  });
+}
+
+export function rejectIncident(token, incidentId) {
+  return requestJson(`/api/incidents/${incidentId}/reject`, {
+    method: 'PUT',
+    headers: authHeaders(token, false),
   });
 }
 
@@ -69,32 +82,25 @@ export function assignTechnician(token, incidentId, technicianId) {
   });
 }
 
+export function linkIncidentAsset(token, incidentId, assetId) {
+  return requestJson(`/api/incidents/${incidentId}/asset`, {
+    method: 'PUT',
+    headers: authHeaders(token),
+    body: JSON.stringify({ assetId }),
+  });
+}
+
 export function getIncidentComments(token, incidentId) {
-  return requestJson(`/api/incidents/${incidentId}/comments`, {
+  return requestJson(`/api/incidents/${incidentId}/updates`, {
     headers: authHeaders(token, false),
   });
 }
 
 export function addIncidentComment(token, incidentId, message) {
-  return requestJson(`/api/incidents/${incidentId}/comments`, {
+  return requestJson(`/api/incidents/${incidentId}/updates`, {
     method: 'POST',
     headers: authHeaders(token),
-    body: JSON.stringify({ message }),
-  });
-}
-
-export function updateIncidentComment(token, commentId, message) {
-  return requestJson(`/api/incidents/comments/${commentId}`, {
-    method: 'PUT',
-    headers: authHeaders(token),
-    body: JSON.stringify({ message }),
-  });
-}
-
-export function deleteIncidentComment(token, commentId) {
-  return requestJson(`/api/incidents/comments/${commentId}`, {
-    method: 'DELETE',
-    headers: authHeaders(token, false),
+    body: JSON.stringify({ updateText: message }),
   });
 }
 

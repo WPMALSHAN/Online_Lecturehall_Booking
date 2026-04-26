@@ -1,5 +1,6 @@
 package com.example.demo.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,19 +20,25 @@ public class User {
 
     private String name;
 
+    @JsonIgnore
     private String resetToken;
 
+    @JsonIgnore
     private LocalDateTime resetTokenExpiry;
 
     @Column(unique = true, nullable = false)
     private String email;
 
     @Column(nullable = false)
+    @JsonIgnore
     private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role = Role.STUDENT;
+
+    @Column(nullable = false)
+    private boolean blocked = false;
 
     public enum Role {
         STUDENT, LECTURER, TECHNICIAN, ADMIN

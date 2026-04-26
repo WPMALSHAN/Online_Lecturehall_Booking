@@ -4,7 +4,7 @@ const AUTH_STORAGE_KEY = 'smart-campus-auth';
 const TOKEN_STORAGE_KEY = 'token';
 
 function resolveApiBaseUrl() {
-  const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+  const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8070/api';
   return rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl}/api`;
 }
 

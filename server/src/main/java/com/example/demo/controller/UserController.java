@@ -50,6 +50,30 @@ public class UserController {
         return ResponseEntity.ok(userService.updateRole(id, newRole));
     }
 
+    // PUT /api/users/{id}/block
+    // Block a user account - Admin only
+    @PutMapping("/{id}/block")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<User> blockUser(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.blockUser(id));
+    }
+
+    // PUT /api/users/{id}/unblock
+    // Unblock a user account - Admin only
+    @PutMapping("/{id}/unblock")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<User> unblockUser(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.unblockUser(id));
+    }
+
+    // GET /api/users/by-role?role=STUDENT
+    // Filter users by role - Admin only
+    @GetMapping("/by-role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<User>> getUsersByRole(@RequestParam String role) {
+        return ResponseEntity.ok(userService.getUsersByRole(role));
+    }
+
     // PUT /api/users/{id}
     // Update user details - Admin only
     @PutMapping("/{id}")
@@ -92,5 +116,13 @@ public class UserController {
                 body.get("newPassword")
         );
         return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
+    }
+
+    // GET /api/users/admin/dashboard
+    // Dashboard summary - Admin only
+    @GetMapping("/admin/dashboard")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> getAdminDashboardSummary() {
+        return ResponseEntity.ok(userService.getAdminDashboardSummary());
     }
 }

@@ -5,6 +5,7 @@ import com.example.demo.entity.Incident;
 import com.example.demo.entity.TechnicianUpdate;
 import com.example.demo.entity.User;
 import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.repository.AssetRepository;
 import com.example.demo.repository.IncidentRepository;
 import com.example.demo.repository.TechnicianUpdateRepository;
 import com.example.demo.repository.UserRepository;
@@ -20,6 +21,7 @@ public class IncidentService {
     private final IncidentRepository incidentRepository;
     private final TechnicianUpdateRepository technicianUpdateRepository;
     private final UserRepository userRepository;
+    private final AssetRepository assetRepository;
 
     // Create incident report
     public Incident createIncident(IncidentRequest request, String email) {
@@ -34,6 +36,13 @@ public class IncidentService {
                 .priority(request.getPriority())
                 .status(Incident.Status.OPEN)
                 .build();
+
+        if (request.getAssetId() != null) {
+            incident.setRelatedAsset(
+                assetRepository.findById(request.getAssetId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Asset not found with id: " + request.getAssetId()))
+            );
+        }
 
         return incidentRepository.save(incident);
     }
@@ -74,6 +83,18 @@ public class IncidentService {
 
         incident.setAssignedTechnician(technician);
         incident.setStatus(Incident.Status.IN_PROGRESS);
+        return incidentRepository.save(incident);
+    }
+
+    // Link incident to asset (Admin only)
+    public Incident linkAsset(Long incidentId, Long assetId) {
+        Incident incident = getIncidentById(incidentId);
+
+        incident.setRelatedAsset(
+                assetRepository.findById(assetId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Asset not found with id: " + assetId))
+        );
+
         return incidentRepository.save(incident);
     }
 

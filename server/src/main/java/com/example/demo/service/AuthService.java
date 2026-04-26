@@ -64,6 +64,11 @@ public class AuthService {
             throw new RuntimeException("Invalid email or password");
         }
 
+        // 🔒 Reject login for blocked accounts
+        if (user.isBlocked()) {
+            throw new RuntimeException("Your account has been blocked. Please contact the administrator.");
+        }
+
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
 
         return new AuthResponse(token, user.getName(), user.getEmail(), user.getRole().name());

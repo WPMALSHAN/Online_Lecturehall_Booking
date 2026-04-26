@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppNavbar from '../components/AppNavbar';
-import { useAuth } from '../context/AuthContext';
-import { requestJson } from '../services/apiClient';
+const API_BASE_URL = 'http://localhost:8070/api';
 
 const PRIORITY_BADGE = {
   HIGH: 'bg-red-100 text-red-700 border border-red-300',
@@ -34,35 +33,50 @@ function formatDate(val) {
 }
 
 export default function MyIncidentsPage() {
-  const { token } = useAuth();
   const [incidents, setIncidents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
-    loadIncidents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter]);
+    let isCancelled = false;
 
-  async function loadIncidents() {
-    setIsLoading(true);
-    setErrorMessage('');
-    try {
-      const query = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : '';
-      // Uses existing apiClient → requestJson which properly attaches headers via incidentApi pattern
-      const data = await requestJson(`/api/incidents/my${query}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setIncidents(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setErrorMessage(err.message || 'Failed to load incidents.');
-    } finally {
-      setIsLoading(false);
-    }
-  }
+    (async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/incidents/my`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-  const counts = incidents.reduce((acc, inc) => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.message || 'Failed to load incidents.');
+        }
+
+        if (!isCancelled) {
+          const items = Array.isArray(payload) ? payload : [];
+          setIncidents(items);
+          setErrorMessage('');
+          setIsLoading(false);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setErrorMessage(err.message || 'Failed to load incidents.');
+          setIsLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  const filteredIncidents = !statusFilter
+    ? incidents
+    : incidents.filter((item) => item.status === statusFilter);
+
+  const counts = filteredIncidents.reduce((acc, inc) => {
     acc[inc.status] = (acc[inc.status] || 0) + 1;
     return acc;
   }, {});
@@ -90,10 +104,10 @@ export default function MyIncidentsPage() {
         </div>
 
         {/* Summary stat cards */}
-        {!isLoading && incidents.length > 0 && (
+        {!isLoading && filteredIncidents.length > 0 && (
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: 'Total', value: incidents.length, grad: 'from-orange-400 to-red-400' },
+              { label: 'Total', value: filteredIncidents.length, grad: 'from-orange-400 to-red-400' },
               { label: 'Open', value: counts.OPEN || 0, grad: 'from-blue-400 to-blue-500' },
               { label: 'In Progress', value: counts.IN_PROGRESS || 0, grad: 'from-amber-400 to-amber-500' },
               { label: 'Resolved', value: counts.RESOLVED || 0, grad: 'from-green-400 to-green-500' },
@@ -141,7 +155,7 @@ export default function MyIncidentsPage() {
         )}
 
         {/* Empty state */}
-        {!isLoading && incidents.length === 0 && !errorMessage && (
+        {!isLoading && filteredIncidents.length === 0 && !errorMessage && (
           <div className="rounded-2xl border border-dashed border-orange-200 bg-white p-10 text-center shadow-sm">
             <p className="text-3xl">📋</p>
             <p className="mt-3 text-base font-semibold text-gray-700">No incidents yet</p>
@@ -158,9 +172,9 @@ export default function MyIncidentsPage() {
         )}
 
         {/* Incident list */}
-        {!isLoading && incidents.length > 0 && (
+        {!isLoading && filteredIncidents.length > 0 && (
           <div className="space-y-4">
-            {incidents.map((inc) => (
+            {filteredIncidents.map((inc) => (
               <article
                 key={inc.id}
                 className="group rounded-2xl border border-orange-100 bg-white p-5 shadow-sm transition hover:shadow-md hover:shadow-orange-100/50"

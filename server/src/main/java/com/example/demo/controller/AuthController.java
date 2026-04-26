@@ -1,6 +1,5 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.AuthResponse;
 import com.example.demo.dto.ForgotPasswordRequest;
 import com.example.demo.dto.Loginrequest;
 import com.example.demo.dto.ResetPasswordRequest;

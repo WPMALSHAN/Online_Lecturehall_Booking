@@ -50,7 +50,7 @@ public class JwtFilter extends OncePerRequestFilter {
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             User user = userRepository.findByEmail(email).orElse(null);
 
-            if (user != null && jwtUtil.validateToken(token, email)) {
+            if (user != null && jwtUtil.validateToken(token, email) && !user.isBlocked()) {
                 // ✅ ROLE_ prefix is REQUIRED for hasRole() to work
                 String roleWithPrefix = "ROLE_" + user.getRole().name();
 

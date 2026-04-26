@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import AppNavbar from '../components/AppNavbar';
 import { useAuth } from '../context/AuthContext';
-import { createIncident } from '../services/incidentApi';
 
 const CATEGORIES = [
   'Electrical',
@@ -17,6 +16,7 @@ const CATEGORIES = [
 ];
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH'];
+const API_BASE_URL = 'http://localhost:8070/api';
 
 const PRIORITY_RING = {
   LOW: 'ring-green-400',
@@ -31,8 +31,11 @@ const PRIORITY_ACTIVE = {
 };
 
 export default function ReportIncidentPage() {
-  const { token } = useAuth();
   const navigate = useNavigate();
+  const { role } = useAuth();
+
+  // Technicians are NOT allowed to report incidents
+  if (role === 'TECHNICIAN') return <Navigate to="/dashboard" replace />;
 
   const [form, setForm] = useState({
     location: '',
@@ -74,8 +77,21 @@ export default function ReportIncidentPage() {
 
     setIsSubmitting(true);
     try {
-      // Uses existing incidentApi.js → correctly attaches Bearer token
-      await createIncident(token, form, []);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/incidents`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(form),
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.message || 'Failed to submit incident.');
+      }
+
       setSuccessMessage('Incident reported successfully! Redirecting…');
       setForm({ location: '', category: '', description: '', priority: 'MEDIUM' });
       setTimeout(() => navigate('/dashboard/incidents/my'), 1800);

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppNavbar from '../components/AppNavbar';
-import { fetchAssets } from '../services/assetApi';
+import { useAuth } from '../context/AuthContext';
+import { deleteAsset, fetchAssets, updateAsset } from '../services/assetApi';
 
 function getStatusStyles(status) {
   return String(status).toUpperCase() === 'ACTIVE'
@@ -10,10 +11,22 @@ function getStatusStyles(status) {
 }
 
 export default function AssetsPage() {
+  const { role } = useAuth();
   const [assets, setAssets] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [editingAssetId, setEditingAssetId] = useState(null);
+  const [assetEditForm, setAssetEditForm] = useState({
+    name: '',
+    category: '',
+    location: '',
+    status: 'ACTIVE',
+  });
+  const [assetActionId, setAssetActionId] = useState(null);
+
+  const isAdmin = role === 'ADMIN';
 
   useEffect(() => {
     let isMounted = true;
@@ -21,6 +34,7 @@ export default function AssetsPage() {
     async function loadAssets() {
       setIsLoading(true);
       setErrorMessage('');
+      setSuccessMessage('');
 
       try {
         const data = await fetchAssets();
@@ -44,6 +58,83 @@ export default function AssetsPage() {
       isMounted = false;
     };
   }, []);
+
+  const onStartEdit = (asset) => {
+    setEditingAssetId(asset.id);
+    setAssetEditForm({
+      name: asset.name || '',
+      category: asset.category || '',
+      location: asset.location || '',
+      status: asset.status || 'ACTIVE',
+    });
+  };
+
+  const onCancelEdit = () => {
+    setEditingAssetId(null);
+    setAssetEditForm({
+      name: '',
+      category: '',
+      location: '',
+      status: 'ACTIVE',
+    });
+  };
+
+  const onAssetEditFieldChange = (event) => {
+    const { name, value } = event.target;
+    setAssetEditForm((previous) => ({ ...previous, [name]: value }));
+  };
+
+  const onUpdateAsset = async (assetId) => {
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    if (!assetEditForm.name.trim() || !assetEditForm.category.trim() || !assetEditForm.location.trim()) {
+      setErrorMessage('Name, category, and location are required.');
+      return;
+    }
+
+    setAssetActionId(assetId);
+    try {
+      const updated = await updateAsset(assetId, {
+        name: assetEditForm.name.trim(),
+        category: assetEditForm.category.trim(),
+        location: assetEditForm.location.trim(),
+        status: assetEditForm.status,
+      });
+
+      setAssets((previous) => previous.map((item) => (item.id === assetId ? updated : item)));
+      setSuccessMessage(`Asset #${assetId} updated successfully.`);
+      onCancelEdit();
+    } catch (error) {
+      setErrorMessage(error?.message || 'Failed to update asset.');
+    } finally {
+      setAssetActionId(null);
+    }
+  };
+
+  const onDeleteAsset = async (assetId) => {
+    const shouldDelete = window.confirm(`Delete asset #${assetId}?`);
+    if (!shouldDelete) {
+      return;
+    }
+
+    setErrorMessage('');
+    setSuccessMessage('');
+    setAssetActionId(assetId);
+
+    try {
+      await deleteAsset(assetId);
+      setAssets((previous) => previous.filter((item) => item.id !== assetId));
+      setSuccessMessage(`Asset #${assetId} deleted successfully.`);
+      if (editingAssetId === assetId) {
+        onCancelEdit();
+      }
+    } catch (error) {
+      setErrorMessage(error?.message || 'Failed to delete asset.');
+    } finally {
+      setAssetActionId(null);
+    }
+  };
 
   const filteredAssets = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -115,6 +206,11 @@ export default function AssetsPage() {
               {errorMessage}
             </p>
           ) : null}
+          {successMessage ? (
+            <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              {successMessage}
+            </p>
+          ) : null}
 
           {isLoading ? (
             <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -156,16 +252,93 @@ export default function AssetsPage() {
                     </span>
                   </div>
 
-                  <dl className="mt-5 grid gap-3 text-sm text-slate-700">
-                    <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
-                      <dt className="font-medium text-slate-500">Category</dt>
-                      <dd className="font-semibold text-slate-900">{asset.category || '-'}</dd>
+                  {editingAssetId === asset.id && isAdmin ? (
+                    <div className="mt-5 grid gap-3">
+                      <input
+                        name="name"
+                        value={assetEditForm.name}
+                        onChange={onAssetEditFieldChange}
+                        placeholder="Asset name"
+                        className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
+                      />
+                      <input
+                        name="category"
+                        value={assetEditForm.category}
+                        onChange={onAssetEditFieldChange}
+                        placeholder="Category"
+                        className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
+                      />
+                      <input
+                        name="location"
+                        value={assetEditForm.location}
+                        onChange={onAssetEditFieldChange}
+                        placeholder="Location"
+                        className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
+                      />
+                      <select
+                        name="status"
+                        value={assetEditForm.status}
+                        onChange={onAssetEditFieldChange}
+                        className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
+                      >
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
+                      </select>
                     </div>
-                    <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
-                      <dt className="font-medium text-slate-500">Location</dt>
-                      <dd className="font-semibold text-slate-900">{asset.location || '-'}</dd>
+                  ) : (
+                    <dl className="mt-5 grid gap-3 text-sm text-slate-700">
+                      <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+                        <dt className="font-medium text-slate-500">Category</dt>
+                        <dd className="font-semibold text-slate-900">{asset.category || '-'}</dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+                        <dt className="font-medium text-slate-500">Location</dt>
+                        <dd className="font-semibold text-slate-900">{asset.location || '-'}</dd>
+                      </div>
+                    </dl>
+                  )}
+
+                  {isAdmin ? (
+                    <div className="mt-4 flex gap-2">
+                      {editingAssetId === asset.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => onUpdateAsset(asset.id)}
+                            disabled={assetActionId === asset.id}
+                            className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-70"
+                          >
+                            {assetActionId === asset.id ? 'Saving...' : 'Save Update'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={onCancelEdit}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => onStartEdit(asset)}
+                            className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700"
+                          >
+                            Update
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteAsset(asset.id)}
+                            disabled={assetActionId === asset.id}
+                            className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-70"
+                          >
+                            {assetActionId === asset.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </>
+                      )}
                     </div>
-                  </dl>
+                  ) : null}
                 </article>
               ))}
             </div>

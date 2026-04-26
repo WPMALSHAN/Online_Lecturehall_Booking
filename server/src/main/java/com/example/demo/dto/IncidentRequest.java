@@ -17,4 +17,7 @@ public class IncidentRequest {
 
     @NotBlank(message = "Priority is required")
     private String priority; // LOW, MEDIUM, HIGH
+
+    // Optional related asset selected by user/admin
+    private Long assetId;
 }

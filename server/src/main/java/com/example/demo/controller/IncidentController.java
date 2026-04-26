@@ -24,8 +24,9 @@ public class IncidentController {
 
     private final IncidentService incidentService;
 
-    // POST /api/incidents - any logged in user can report
+    // POST /api/incidents - STUDENT and LECTURER can report; TECHNICIAN and ADMIN cannot
     @PostMapping
+    @PreAuthorize("hasRole('STUDENT') or hasRole('LECTURER')")
     public ResponseEntity<Incident> create(
             @Valid @RequestBody IncidentRequest request,
             Authentication auth) {
@@ -73,6 +74,16 @@ public class IncidentController {
             @RequestBody Map<String, Long> body) {
         Long technicianId = body.get("technicianId");
         return ResponseEntity.ok(incidentService.assignTechnician(id, technicianId));
+    }
+
+    // PUT /api/incidents/{id}/asset - Admin links asset
+    @PutMapping("/{id}/asset")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Incident> linkAsset(
+            @PathVariable Long id,
+            @RequestBody Map<String, Long> body) {
+        Long assetId = body.get("assetId");
+        return ResponseEntity.ok(incidentService.linkAsset(id, assetId));
     }
 
     // POST /api/incidents/{id}/updates - technician adds update
