@@ -1,0 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  font-family: 'Space Grotesk', sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  color: #163040;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(236, 159, 79, 0.22), transparent 36%),
+    radial-gradient(circle at 88% 84%, rgba(38, 126, 160, 0.28), transparent 40%),
+    linear-gradient(160deg, #f5f8fa 0%, #eaf2f6 55%, #e2edf3 100%);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-family: 'Archivo', sans-serif;
+}
+
+p {
+  line-height: 1.5;
+}
